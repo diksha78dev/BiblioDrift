@@ -185,7 +185,71 @@ const SAMPLE_BOOKS = {
                 { name: 'MemoirLover', rating: 5, text: 'An incredible story of resilience and determination.' },
                 { name: 'Educator', rating: 4, text: 'Shows the transformative power of education.' }
             ]
-        }
+        },
+        {
+    id: 'sample-12',
+    title: 'The Alchemist',
+    author: 'Paulo Coelho',
+    cover: 'https://covers.openlibrary.org/b/id/8225261-M.jpg',
+    rating: 4.3,
+    ratingCount: 5124,
+    description: 'Santiago, a young Andalusian shepherd, dreams of discovering a worldly treasure. His journey takes him across the deserts of Egypt, teaching him about destiny, love, and listening to his heart.',
+    categories: ['Fiction', 'Adventure', 'Inspirational'],
+    spineColor: '#DAA520',
+    textColor: '#1C1C1C',
+    reviews: [
+        { name: 'DreamChaser', rating: 5, text: 'A beautiful and inspiring tale about following your dreams.' },
+        { name: 'BookWorm99', rating: 4, text: 'Simple yet powerful storytelling with deep meaning.' }
+    ]
+},
+{
+    id: 'sample-13',
+    title: 'Atomic Habits',
+    author: 'James Clear',
+    cover: 'https://covers.openlibrary.org/b/id/9251996-M.jpg',
+    rating: 4.6,
+    ratingCount: 8432,
+    description: 'A practical guide to building good habits and breaking bad ones. James Clear explains how small daily improvements compound into remarkable long-term results.',
+    categories: ['Self-Help', 'Productivity', 'Personal Development'],
+    spineColor: '#2E8B57',
+    textColor: '#FFFFFF',
+    reviews: [
+        { name: 'GrowthMindset', rating: 5, text: 'Life-changing insights on building sustainable habits.' },
+        { name: 'FocusBuilder', rating: 4, text: 'Actionable advice backed by science and real examples.' }
+    ]
+},
+{
+    id: 'sample-14',
+    title: 'Deep Work',
+    author: 'Cal Newport',
+    cover: 'https://covers.openlibrary.org/b/id/8370226-M.jpg',
+    rating: 4.5,
+    ratingCount: 6921,
+    description: 'A powerful guide to mastering focused success in a distracted world. Cal Newport explains how cultivating deep, concentrated work can dramatically improve productivity and create meaningful results in professional and personal life.',
+    categories: ['Productivity', 'Self-Improvement', 'Career Development'],
+    spineColor: '#1E3A8A',
+    textColor: '#FFFFFF',
+    reviews: [
+        { name: 'CodeMaster', rating: 5, text: 'A must-read for anyone serious about improving focus and output.' },
+        { name: 'SilentAchiever', rating: 4, text: 'Great framework for eliminating distractions and building deep concentration.' }
+    ]
+},
+{
+    id: 'sample-15',
+    title: 'The Psychology of Money',
+    author: 'Morgan Housel',
+    cover: 'https://covers.openlibrary.org/b/id/10521270-M.jpg',
+    rating: 4.7,
+    ratingCount: 11234,
+    description: 'An insightful exploration of how people think about money and the behaviors that influence financial decisions. Morgan Housel shares timeless lessons on wealth, greed, and happiness through engaging real-world stories.',
+    categories: ['Finance', 'Self-Development', 'Investing'],
+    spineColor: '#8B4513',
+    textColor: '#FFFFFF',
+    reviews: [
+        { name: 'SmartInvestor', rating: 5, text: 'A refreshing perspective on wealth and financial behavior.' },
+        { name: 'WealthBuilder', rating: 4, text: 'Simple yet powerful lessons that change how you view money.' }
+    ]
+}
     ]
 };
 
@@ -303,13 +367,58 @@ class BookshelfRenderer3D {
         container.innerHTML = '';
 
         books.forEach((book, index) => {
-            const bookSpine = this.createBookSpine(book, index);
+            const bookSpine = this.createBookSpine(book, index, shelfType);
             container.appendChild(bookSpine);
         });
+
+        // Add Shelf Drop Zone Logic
+        // Remove old listeners? It's hard without named functions. 
+        // But since we clear innerHTML, we just re-attach to the container? No, container is persistent.
+        // We should be careful about duplicate listeners on the container.
+        
+        // A simple way to avoid duplicates is to set a custom property or remove and re-add.
+        // Or better, just attach these once in init() if possible, but we need shelfType reference.
+        // Since renderShelf is called multiple times, we should check if listeners are attached.
+        
+        if (!container.dataset.dropListenersAttached) {
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Essential for drop
+                container.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            });
+
+            container.addEventListener('dragleave', (e) => {
+                container.style.backgroundColor = '';
+            });
+
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                container.style.backgroundColor = '';
+                const bookId = e.dataTransfer.getData('bookId');
+                const sourceShelf = e.dataTransfer.getData('sourceShelf');
+
+                if (bookId && sourceShelf && sourceShelf !== shelfType) {
+                    this.moveBook(bookId, sourceShelf, shelfType);
+                }
+            });
+            container.dataset.dropListenersAttached = 'true';
+        }
     }
 
-    createBookSpine(book, index) {
+    createBookSpine(book, index, shelfType) {
         const spine = document.createElement('div');
+
+        // Drag and Drop Attributes
+        spine.draggable = true;
+        spine.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('bookId', book.id);
+            e.dataTransfer.setData('sourceShelf', shelfType);
+            e.dataTransfer.effectAllowed = 'move';
+            spine.style.opacity = '0.5';
+        });
+        
+        spine.addEventListener('dragend', (e) => {
+            spine.style.opacity = '1';
+        });
 
         // Generate deterministic traits
         const traits = this.generateSpineTraits(book);
@@ -584,6 +693,50 @@ class BookshelfRenderer3D {
             `).join('');
         }
 
+        // Handle Shelf Selection
+        const shelfSelect = document.getElementById('modal-shelf-select');
+        const removeBtn = document.getElementById('modal-remove-btn');
+        
+        if (shelfSelect) {
+            // Find current shelf
+            const storageKey = 'bibliodrift_library';
+            const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
+            let currentShelf = 'current'; // Default
+            
+            ['current', 'want', 'finished'].forEach(shelf => {
+                const found = (localLibrary[shelf] || []).find(b => b.id === book.id || (b.volumeInfo && b.id === book.id));
+                if (found) currentShelf = shelf;
+            });
+            
+            shelfSelect.value = currentShelf;
+            
+            // Remove old listeners to avoid duplicates by cloning
+            const newSelect = shelfSelect.cloneNode(true);
+            shelfSelect.parentNode.replaceChild(newSelect, shelfSelect);
+            
+            newSelect.addEventListener('change', (e) => {
+                const newShelf = e.target.value;
+                this.moveBook(book.id, currentShelf, newShelf);
+                currentShelf = newShelf; // Update local tracker
+                
+                // Close modal after move? Optional. Let's keep it open but maybe show feedback.
+                // For now, shelf re-render happens in background.
+            });
+        }
+        
+        if (removeBtn) {
+            // Remove old listeners
+            const newRemoveBtn = removeBtn.cloneNode(true);
+            removeBtn.parentNode.replaceChild(newRemoveBtn, removeBtn);
+            
+            newRemoveBtn.addEventListener('click', () => {
+                if(confirm('Are you sure you want to remove this book from your library?')) {
+                    this.removeBook(book.id);
+                    this.closeModal();
+                }
+            });
+        }
+
         // Show modal
         if (this.modal) {
             this.modal.classList.add('active');
@@ -605,6 +758,18 @@ class BookshelfRenderer3D {
     }
 
     setupModalHandlers() {
+        // Book flip interaction
+        const bookObject = document.getElementById('book-3d-object');
+        if (bookObject) {
+            bookObject.addEventListener('click', (e) => {
+                // If user is selecting text (e.g. description), don't flip
+                if (window.getSelection().toString().length > 0) {
+                    return;
+                }
+                bookObject.classList.toggle('flipped');
+            });
+        }
+
         // Close button
         const closeBtn = document.getElementById('modal-close-btn');
         if (closeBtn) {
@@ -710,6 +875,60 @@ class BookshelfRenderer3D {
 
         localStorage.setItem(storageKey, JSON.stringify(library));
         console.log(`Added ${book.title} to library`);
+    }
+
+    moveBook(bookId, fromShelf, toShelf) {
+        if (fromShelf === toShelf) return;
+
+        const storageKey = 'bibliodrift_library';
+        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
+        
+        // Find existing lists
+        if (!localLibrary[fromShelf]) localLibrary[fromShelf] = [];
+        if (!localLibrary[toShelf]) localLibrary[toShelf] = [];
+
+        // Find the book index
+        const bookIndex = localLibrary[fromShelf].findIndex(b => b.id === bookId || (b.volumeInfo && b.id === bookId));
+        
+        if (bookIndex === -1) {
+            console.error("Book not found in source shelf");
+            return;
+        }
+
+        const book = localLibrary[fromShelf][bookIndex];
+        
+        // Remove from old shelf
+        localLibrary[fromShelf].splice(bookIndex, 1);
+        
+        // Add to new shelf
+        localLibrary[toShelf].push(book);
+        
+        // Save and refresh
+        localStorage.setItem(storageKey, JSON.stringify(localLibrary));
+        this.refreshShelves();
+        
+        // Visual Feedback (optional)
+        console.log(`Moved book ${bookId} from ${fromShelf} to ${toShelf}`);
+    }
+
+    removeBook(bookId) {
+        const storageKey = 'bibliodrift_library';
+        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+        let removed = false;
+        ['current', 'want', 'finished'].forEach(shelf => {
+            const index = (localLibrary[shelf] || []).findIndex(b => b.id === bookId || (b.volumeInfo && b.id === bookId));
+            if (index !== -1) {
+                localLibrary[shelf].splice(index, 1);
+                removed = true;
+            }
+        });
+
+        if (removed) {
+            localStorage.setItem(storageKey, JSON.stringify(localLibrary));
+            this.refreshShelves();
+            console.log(`Removed book ${bookId}`);
+        }
     }
 
     getStarRating(rating) {
