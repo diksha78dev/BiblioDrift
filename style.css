@@ -6670,3 +6670,70 @@ main {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* Library Filters Enhancement */
+.sort-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    position: absolute;
+    top: 45px;
+    right: 180px;
+    z-index: 10;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.filter-group:hover {
+    border-color: var(--accent-gold);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.filter-group i {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+}
+
+.sort-select {
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 1.5rem;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: 1rem;
+}
+
+.sort-select option {
+    background: var(--bg-color);
+    color: var(--text-main);
+    padding: 10px;
+}
+
+.sort-select option:hover, .sort-select option:focus, .sort-select option:active, .sort-select option:checked {
+    background-color: var(--accent-gold) !important;
+    color: #fff !important;
+    box-shadow: 0 0 10px 100px var(--accent-gold) inset !important;
+}
+
+[data-theme="night"] .sort-select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a89a8e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
