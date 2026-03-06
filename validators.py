@@ -361,3 +361,27 @@ class GetAlertsRequest(BaseModel):
     """Request schema for GET /api/v1/alerts endpoint."""
     user_id: int = Field(..., description="User ID")
     active_only: bool = Field(default=True, description="Only return active alerts")
+
+
+# ==================== BOOK REVIEWS & RATINGS ====================
+
+class ReviewRequest(BaseModel):
+    """Request schema for POST /api/v1/reviews endpoint."""
+    user_id: int = Field(..., description="User ID")
+    google_books_id: str = Field(..., min_length=1, max_length=50, description="Google Books ID")
+    rating: int = Field(..., ge=1, le=5, description="Rating (1-5)")
+    review_text: Optional[str] = Field(default="", max_length=2000, description="Review text (max 2000 chars)")
+    
+    @field_validator('google_books_id', 'review_text')
+    @classmethod
+    def sanitize_strings(cls, v: str) -> str:
+        """Strip whitespace from string fields."""
+        return v.strip() if v else v
+    
+    @field_validator('rating')
+    @classmethod
+    def rating_valid(cls, v: int) -> int:
+        """Ensure rating is between 1 and 5."""
+        if v < 1 or v > 5:
+            raise ValueError('Rating must be between 1 and 5')
+        return v

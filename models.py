@@ -299,3 +299,42 @@ class PriceAlert(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+# ==================== BOOK REVIEWS & RATINGS ====================
+
+class Review(db.Model):
+    """Model for user book reviews and ratings."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)  # 1-5 star rating
+    review_text = db.Column(db.Text, nullable=True)  # Optional detailed review
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('reviews', lazy=True))
+    book = db.relationship('Book', backref=db.backref('reviews', lazy=True))
+    
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'book_id', name='uq_user_book_review'),
+        db.Index('idx_review_book_id', 'book_id'),
+        db.Index('idx_review_user_id', 'user_id'),
+    )
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "username": self.user.username if self.user else None,
+            "book_id": self.book_id,
+            "google_books_id": self.book.google_books_id if self.book else None,
+            "title": self.book.title if self.book else None,
+            "authors": self.book.authors if self.book else None,
+            "thumbnail": self.book.thumbnail if self.book else None,
+            "rating": self.rating,
+            "review_text": self.review_text,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import os
 from datetime import datetime, timedelta
 from ai_service import generate_book_note, get_ai_recommendations, get_book_mood_tags_safe, generate_chat_response, llm_service
-from models import db, User, Book, ShelfItem, BookNote, ReadingGoal, ReadingStats, Collection, CollectionItem, PriceHistory, PriceAlert, register_user, login_user
+from models import db, User, Book, ShelfItem, BookNote, ReadingGoal, ReadingStats, Collection, CollectionItem, PriceHistory, PriceAlert, Review, register_user, login_user
 from price_tracker import get_price_tracker
 from validators import (
     validate_request,
@@ -28,6 +28,7 @@ from validators import (
     CollectionRequest,
     UpdateCollectionRequest,
     AddToCollectionRequest,
+    ReviewRequest,
     format_validation_errors,
     validate_jwt_secret,
     is_production_mode
@@ -1211,6 +1212,153 @@ def get_public_collections():
             "offset": offset
         }), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==================== BOOK REVIEWS & RATINGS ENDPOINTS ====================
+
+@app.route('/api/v1/reviews', methods=['POST'])
+@jwt_required()
+def create_or_update_review():
+    """Create or update a book review (requires JWT)."""
+    data = request.json
+    current_user_id = get_jwt_identity()
+    
+    # Validate request using Pydantic
+    is_valid, validated_data = validate_request(ReviewRequest, data)
+    if not is_valid:
+        return jsonify(validated_data), 400
+    
+    # Ensure user matches token
+    if str(data['user_id']) != str(current_user_id):
+        return jsonify({"error": "Unauthorized access to another user's reviews"}), 403
+    
+    try:
+        # Check if book exists in Book table
+        book = Book.query.filter_by(google_books_id=data['google_books_id']).first()
+        if not book:
+            book = Book(
+                google_books_id=data['google_books_id'],
+                title=data.get('title', 'Unknown'),
+                authors=data.get('authors', ''),
+                thumbnail=data.get('thumbnail', '')
+            )
+            db.session.add(book)
+            db.session.flush()
+        
+        # Check if review already exists for this user/book combination
+        existing_review = Review.query.filter_by(
+            user_id=data['user_id'], book_id=book.id
+        ).first()
+        
+        if existing_review:
+            # Update existing review
+            existing_review.rating = data['rating']
+            existing_review.review_text = data.get('review_text', '')
+            review = existing_review
+            message = "Review updated successfully"
+        else:
+            # Create new review
+            review = Review(
+                user_id=data['user_id'],
+                book_id=book.id,
+                rating=data['rating'],
+                review_text=data.get('review_text', '')
+            )
+            db.session.add(review)
+            message = "Review created successfully"
+        
+        db.session.commit()
+        return jsonify({
+            "message": message,
+            "review": review.to_dict()
+        }), 201 if not existing_review else 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/reviews/<book_id>', methods=['GET'])
+def get_book_reviews(book_id):
+    """Get all reviews for a book (public endpoint)."""
+    try:
+        # Get book by google_books_id (string) or internal id (int)
+        book = None
+        if book_id.isdigit():
+            book = Book.query.get(int(book_id))
+        else:
+            book = Book.query.filter_by(google_books_id=book_id).first()
+        
+        if not book:
+            return jsonify({"error": "Book not found"}), 404
+        
+        # Get all reviews for this book
+        reviews = Review.query.filter_by(book_id=book.id).order_by(
+            Review.created_at.desc()
+        ).all()
+        
+        # Calculate average rating
+        total_rating = sum(r.rating for r in reviews)
+        average_rating = round(total_rating / len(reviews), 1) if reviews else 0
+        
+        return jsonify({
+            "book_id": book.id,
+            "google_books_id": book.google_books_id,
+            "title": book.title,
+            "authors": book.authors,
+            "thumbnail": book.thumbnail,
+            "average_rating": average_rating,
+            "total_reviews": len(reviews),
+            "reviews": [review.to_dict() for review in reviews]
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/users/<user_id>/reviews', methods=['GET'])
+@jwt_required()
+def get_user_reviews(user_id):
+    """Get user's reviews (requires JWT, user can only view their own reviews)."""
+    current_user_id = get_jwt_identity()
+    
+    if str(user_id) != str(current_user_id):
+        return jsonify({"error": "Unauthorized - you can only view your own reviews"}), 403
+    
+    try:
+        reviews = Review.query.filter_by(user_id=user_id).order_by(
+            Review.created_at.desc()
+        ).all()
+        
+        return jsonify({
+            "user_id": user_id,
+            "total_reviews": len(reviews),
+            "reviews": [review.to_dict() for review in reviews]
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/reviews/<int:review_id>', methods=['DELETE'])
+@jwt_required()
+def delete_review(review_id):
+    """Delete a review (requires JWT, user can only delete their own reviews)."""
+    current_user_id = get_jwt_identity()
+    
+    try:
+        review = Review.query.get(review_id)
+        if not review:
+            return jsonify({"error": "Review not found"}), 404
+        
+        # Check if user owns the review
+        if str(review.user_id) != str(current_user_id):
+            return jsonify({"error": "Unauthorized - you can only delete your own reviews"}), 403
+        
+        db.session.delete(review)
+        db.session.commit()
+        
+        return jsonify({"message": "Review deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 
