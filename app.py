@@ -328,7 +328,7 @@ def handle_mood_search():
 @app.route('/api/v1/generate-note', methods=['POST'])
 @rate_limit('generate_note')
 def handle_generate_note():
-    """Generate AI-powered book note with optional mood analysis."""
+    """Generate AI-powered book recommendation with vibe support."""
     try:
         data = request.get_json()
         
@@ -337,9 +337,11 @@ def handle_generate_note():
         if not is_valid:
             return jsonify(validated_data), 400
         
+        # Extract parameters with support for new vibe field
         description = validated_data.description
         title = validated_data.title
         author = validated_data.author
+        vibe = getattr(validated_data, 'vibe', 'cozy discovery')
         
         # Check cache
         cached_note = BookNote.query.filter_by(book_title=title, book_author=author).first()
@@ -347,19 +349,27 @@ def handle_generate_note():
             print(f"Cache hit for {title} by {author}")
             return success_response(data={"vibe": cached_note.content})
         
-        vibe = generate_book_note(description, title, author)
+        # Generate AI recommendation with vibe context
+        recommendation = generate_book_note(description, title, author, vibe)
         
-        # Save to cache
+        # Save to cache if we have valid data
         try:
-            if vibe and title and author: # Ensure we have valid data to cache
-                new_note = BookNote(book_title=title, book_author=author, content=vibe)
+            if recommendation and isinstance(recommendation, dict):
+                # For structured responses, cache the vibe content
+                cache_content = recommendation.get('vibe', recommendation.get('bookseller_note', str(recommendation)))
+                new_note = BookNote(book_title=title, book_author=author, content=cache_content)
+                db.session.add(new_note)
+                db.session.commit()
+            elif isinstance(recommendation, str):
+                # For legacy string responses
+                new_note = BookNote(book_title=title, book_author=author, content=recommendation)
                 db.session.add(new_note)
                 db.session.commit()
         except Exception as e:
             print(f"Failed to cache note: {e}")
             db.session.rollback()
 
-        return success_response(data={"vibe": vibe})
+        return success_response(data=recommendation)
         
     except Exception as e:
         return internal_error(str(e))
