@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from ai_service import generate_book_note, get_ai_recommendations, get_book_mood_tags_safe, generate_chat_response, llm_service
 from models import db, User, Book, ShelfItem, BookNote, ReadingGoal, ReadingStats, Collection, CollectionItem, PriceHistory, PriceAlert, Review, register_user, login_user
 from price_tracker import get_price_tracker
+from cache_service import cache_service
 from validators import (
     validate_request,
     AnalyzeMoodRequest,
@@ -64,6 +65,9 @@ app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'default-dev-secret-k
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
 jwt = JWTManager(app)
 CORS(app)
+
+# Initialize cache service
+cache_service.init_app(app)
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -406,7 +410,9 @@ def handle_chat():
 
 @app.route('/api/v1/health', methods=['GET'])
 def health_check():
-    """Health check endpoint."""
+    """Health check endpoint with cache statistics."""
+    cache_stats = cache_service.get_stats()
+    
     return jsonify({
         "status": "healthy",
         "service": "BiblioDrift AI Service",
@@ -417,8 +423,10 @@ def health_check():
             "openai_configured": llm_service.openai_client is not None,
             "groq_configured": llm_service.groq_client is not None,
             "gemini_configured": llm_service.gemini_client is not None,
-            "preferred_llm": llm_service.preferred_llm
-        }
+            "preferred_llm": llm_service.preferred_llm,
+            "caching_enabled": cache_stats.get('cache_type') != 'null'
+        },
+        "cache": cache_stats
     })
 
 

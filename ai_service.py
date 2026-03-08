@@ -1,9 +1,18 @@
 # AI service logic with LLM integration (OpenAI/Gemini)
 # Implements 'generate_book_note' and 'get_ai_recommendations'. All recommendations MUST be AI-based.
+# Enhanced with comprehensive caching for expensive operations
 
 import os
 import logging
 from typing import Optional
+
+# Import caching decorators
+from cache_service import (
+    cache_recommendations, 
+    cache_mood_tags, 
+    cache_chat_response,
+    cache_mood_analysis
+)
 
 # Setup logging from environment
 logging.basicConfig(
@@ -323,6 +332,7 @@ def generate_book_note(description, title="", author=""):
     else:
         return "A delightful read for any quiet moment."
 
+@cache_recommendations
 def get_ai_recommendations(query):
     """
     Generate AI-powered book recommendations based on query.
@@ -362,6 +372,7 @@ def get_ai_recommendations(query):
     
     return f"Based on your interest in '{query}', I'd recommend exploring books that capture similar themes and emotional resonance."
 
+@cache_mood_tags
 def get_book_mood_tags_safe(title: str, author: str = "") -> list:
     """
     Safe wrapper for getting book mood tags.
@@ -381,6 +392,7 @@ def get_book_mood_tags_safe(title: str, author: str = "") -> list:
     
     return []
 
+@cache_chat_response
 def generate_chat_response(user_message, conversation_history=[]):
     """
     Generate truly AI-driven chat responses for the bookseller interface.

@@ -1,5 +1,6 @@
 # Enhanced AI service logic with GoodReads sentiment analysis integration
 # Implements mood analysis functionality for BiblioDrift
+# Enhanced with comprehensive caching system
 
 from .goodreads_scraper import GoodReadsReviewScraper
 from .mood_analyzer import BookMoodAnalyzer
@@ -7,6 +8,16 @@ import json
 import os
 import logging
 from typing import Dict, Optional
+
+# Import caching decorators
+try:
+    from cache_service import cache_mood_analysis, cache_mood_tags
+except ImportError:
+    # Fallback if cache_service is not available
+    def cache_mood_analysis(func):
+        return func
+    def cache_mood_tags(func):
+        return func
 
 class AIBookService:
     """Enhanced AI service with GoodReads mood analysis integration."""
@@ -40,6 +51,7 @@ class AIBookService:
         """Generate cache key for book."""
         return f"{title.lower().strip()}|{author.lower().strip()}"
     
+    @cache_mood_analysis
     def analyze_book_mood(self, title: str, author: str = "") -> Optional[Dict]:
         """
         Analyze book mood using GoodReads reviews.
@@ -82,6 +94,7 @@ class AIBookService:
             logger.error(f"Error analyzing book mood: {e}")
             return None
 
+@cache_mood_tags
 def get_book_mood_tags(title: str, author: str = "") -> list:
     """
     Get mood tags for a specific book.
