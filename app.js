@@ -128,11 +128,28 @@ class BookRenderer {
         const scene = document.createElement('div');
         scene.className = 'book-scene';
 
+        // Badge Logic
+        let badgesHTML = '';
+        const isNew = bookData.date_added && (new Date() - new Date(bookData.date_added)) < (7 * 24 * 60 * 60 * 1000);
+        const isPopular = volumeInfo.ratingsCount && volumeInfo.ratingsCount > 1000;
+        
+        if (isNew || isPopular || categories.length > 0) {
+            badgesHTML += '<div class="book-badge-container">';
+            if (isNew) badgesHTML += '<span class="book-badge badge-new">New</span>';
+            if (isPopular) badgesHTML += '<span class="book-badge badge-popular">Popular</span>';
+            if (categories.length > 0) {
+                const mainGenre = categories[0].split(' / ')[0]; // Take first category part
+                badgesHTML += `<span class="book-badge badge-genre" title="${mainGenre}">${mainGenre}</span>`;
+            }
+            badgesHTML += '</div>';
+        }
+
         // Load flip sound
         const flipSound = new Audio('assets/sounds/page-flip.mp3');
         flipSound.volume = 0.5;
 
         scene.innerHTML = `
+            ${badgesHTML}
             <div class="book" data-id="${id}">
                 <div class="book__face book__face--front">
                     <img src="${thumb.replace('http:', 'https:')}" alt="${title}">
@@ -282,7 +299,8 @@ class BookRenderer {
         if (!container) return;
         try {
             const keyParam = GOOGLE_API_KEY ? `&key=${GOOGLE_API_KEY}` : '';
-            const res = await fetch(`${API_BASE}?q=${query}&maxResults=${maxResults}&printType=books${keyParam}`);
+            const encodedQuery = encodeURIComponent(query);
+            const res = await fetch(`${API_BASE}?q=${encodedQuery}&maxResults=${maxResults}&printType=books${keyParam}`);
 
             if (!res.ok) {
                 throw new Error(`API Error: ${res.statusText}`);
@@ -602,6 +620,7 @@ class LibraryManager {
         }
         return null;
     }
+    // Issue #23: Implements removing a book from local array and database
     async removeBook(id) {
         const result = this.findBookInShelf(id);
         if (result) {
@@ -811,10 +830,28 @@ class GenreManager {
             const thumbnail = info.imageLinks ?
                 (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail) :
                 'https://via.placeholder.com/128x196?text=No+Cover';
+            const categories = info.categories || [];
+
+            // Badge Logic
+            let badgesHTML = '';
+            const isNew = book.date_added && (new Date() - new Date(book.date_added)) < (7 * 24 * 60 * 60 * 1000);
+            const isPopular = info.ratingsCount && info.ratingsCount > 1000;
+            
+            if (isNew || isPopular || categories.length > 0) {
+                badgesHTML += '<div class="book-badge-container">';
+                if (isNew) badgesHTML += '<span class="book-badge badge-new">New</span>';
+                if (isPopular) badgesHTML += '<span class="book-badge badge-popular">Popular</span>';
+                if (categories.length > 0) {
+                    const mainGenre = categories[0].split(' / ')[0]; // Take first category part
+                    badgesHTML += `<span class="book-badge badge-genre" title="${mainGenre}">${mainGenre}</span>`;
+                }
+                badgesHTML += '</div>';
+            }
 
             const card = document.createElement('div');
             card.className = 'genre-book-card';
             card.innerHTML = `
+                ${badgesHTML}
                 <img src="${thumbnail}" alt="${title}" loading="lazy">
                 <div class="genre-book-info">
                     <h4>${title}</h4>
@@ -908,7 +945,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const searchInput = document.getElementById('searchInput');
-    const searchIcon = document.querySelector('.search-icon'); // Or better, get the one inside search-bar if generic
+    const searchIcon = document.querySelector('.search-bar .search-icon');
 
     const performSearch = () => {
         if (searchInput && searchInput.value.trim()) {
@@ -946,9 +983,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             </section>`;
         renderer.renderCuratedSection(query, 'search-results', 20);
     } else if (document.getElementById('row-rainy')) {
-        renderer.renderCuratedSection('subject:mystery+atmosphere', 'row-rainy');
-        renderer.renderCuratedSection('authors:amitav+ghosh|authors:arundhati+roy|subject:india', 'row-indian');
-        renderer.renderCuratedSection('subject:classic+fiction', 'row-classics');
+        renderer.renderCuratedSection('subject:mystery atmosphere', 'row-rainy');
+        renderer.renderCuratedSection('authors:amitav ghosh|authors:arundhati roy|subject:india', 'row-indian');
+        renderer.renderCuratedSection('subject:classic fiction', 'row-classics');
         renderer.renderCuratedSection('subject:fiction', 'row-genre');
     }
 
@@ -1320,3 +1357,4 @@ if (document.readyState === 'loading') {
 } else {
     KeyboardShortcuts.init();
 }
+

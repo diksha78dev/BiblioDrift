@@ -39,6 +39,13 @@ from validators import (
 from collections import defaultdict, deque
 from math import ceil
 from time import time
+from error_responses import (
+    ErrorCodes, error_response, success_response,
+    validation_error, missing_fields_error, invalid_json_error,
+    auth_error, forbidden_error, unauthorized_access_error,
+    not_found_error, resource_exists_error, rate_limit_error,
+    internal_error, service_unavailable_error
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -62,7 +69,7 @@ CORS(app)
 def page_not_found(e):
     # Check if request accepts JSON (API)
     if request.path.startswith('/api/'):
-        return jsonify({"error": "Endpoint not found"}), 404
+        return error_response(ErrorCodes.ENDPOINT_NOT_FOUND, "Endpoint not found", 404)
     # Serve custom HTML for browser requests
     return app.send_static_file('404.html'), 404
 
@@ -245,10 +252,7 @@ def index():
 def handle_analyze_mood():
     """Analyze book mood using GoodReads reviews."""
     if not MOOD_ANALYSIS_AVAILABLE:
-        return jsonify({
-            "success": False,
-            "error": "Mood analysis not available - missing dependencies"
-        }), 503
+        return service_unavailable_error("Mood analysis not available - missing dependencies")
     
     try:
         data = request.get_json()
@@ -264,21 +268,14 @@ def handle_analyze_mood():
         mood_analysis = ai_service.analyze_book_mood(title, author)
         
         if mood_analysis:
-            return jsonify({
-                "success": True,
-                "mood_analysis": mood_analysis
-            })
+            return success_response(
+                data={"mood_analysis": mood_analysis}
+            )
         else:
-            return jsonify({
-                "success": False,
-                "error": "Could not analyze mood for this book"
-            }), 404
+            return not_found_error("Mood analysis for this book")
             
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/mood-tags', methods=['POST'])
 @rate_limit('mood_tags')
@@ -296,16 +293,12 @@ def handle_mood_tags():
         author = validated_data.author
         
         mood_tags = get_book_mood_tags_safe(title, author)
-        return jsonify({
-            "success": True,
-            "mood_tags": mood_tags
-        })
+        return success_response(
+            data={"mood_tags": mood_tags}
+        )
         
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/mood-search', methods=['POST'])
 @rate_limit('mood_search')
@@ -313,26 +306,24 @@ def handle_mood_search():
     """Search for books based on mood/vibe."""
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON or missing request body"}), 400
-            
-        mood_query = data.get('query', '')
         
-        if not mood_query:
-            return jsonify({"error": "Query is required"}), 400
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(MoodSearchRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
+        
+        mood_query = validated_data.query
         
         recommendations = get_ai_recommendations(mood_query)
-        return jsonify({
-            "success": True,
-            "recommendations": recommendations,
-            "query": mood_query
-        })
+        return success_response(
+            data={
+                "recommendations": recommendations,
+                "query": mood_query
+            }
+        )
         
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/generate-note', methods=['POST'])
 @rate_limit('generate_note')
@@ -340,18 +331,21 @@ def handle_generate_note():
     """Generate AI-powered book note with optional mood analysis."""
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON or missing request body"}), 400
-            
-        description = data.get('description', '')
-        title = data.get('title', '')
-        author = data.get('author', '')
+        
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(GenerateNoteRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
+        
+        description = validated_data.description
+        title = validated_data.title
+        author = validated_data.author
         
         # Check cache
         cached_note = BookNote.query.filter_by(book_title=title, book_author=author).first()
         if cached_note:
             print(f"Cache hit for {title} by {author}")
-            return jsonify({"vibe": cached_note.content})
+            return success_response(data={"vibe": cached_note.content})
         
         vibe = generate_book_note(description, title, author)
         
@@ -365,13 +359,10 @@ def handle_generate_note():
             print(f"Failed to cache note: {e}")
             db.session.rollback()
 
-        return jsonify({"vibe": vibe})
+        return success_response(data={"vibe": vibe})
         
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/chat', methods=['POST'])
 @rate_limit('chat')
@@ -379,28 +370,22 @@ def handle_chat():
     """Handle chat messages and generate bookseller responses."""
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON or missing request body"}), 400
-            
-        user_message = data.get('message', '')
-        conversation_history = data.get('history', [])
         
-        if not user_message:
-            return jsonify({"error": "Message is required"}), 400
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(ChatRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
         
-        # Validate and limit conversation history
-        if not isinstance(conversation_history, list):
-            conversation_history = []
+        user_message = validated_data.message
+        conversation_history = validated_data.history or []
         
-        # Limit history size for security and performance
-        conversation_history = conversation_history[-10:]  # Only keep last 10 messages
-        
-        # Validate each message in history
+        # Convert Pydantic models to dicts for the AI service
         validated_history = []
         for msg in conversation_history:
-            if isinstance(msg, dict) and 'type' in msg and 'content' in msg:
-                if len(str(msg.get('content', ''))) <= 1000:  # Limit message size
-                    validated_history.append(msg)
+            if hasattr(msg, 'dict'):
+                validated_history.append(msg.dict())
+            else:
+                validated_history.append(msg)
         
         # Generate contextual response based on conversation history
         response = generate_chat_response(user_message, validated_history)
@@ -408,18 +393,16 @@ def handle_chat():
         # Try to get book recommendations based on the message
         recommendations = get_ai_recommendations(user_message)
         
-        return jsonify({
-            "success": True,
-            "response": response,
-            "recommendations": recommendations,
-            "timestamp": datetime.now().isoformat()
-        })
+        return success_response(
+            data={
+                "response": response,
+                "recommendations": recommendations,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
         
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/health', methods=['GET'])
 def health_check():
@@ -444,49 +427,53 @@ def health_check():
 @jwt_required()
 def add_to_library():
     """Add a book to the user's shelf."""
-    data = request.json
-    current_user_id = get_jwt_identity()
-    
-    required_fields = ['user_id', 'google_books_id', 'title', 'shelf_type']
-    if not all(field in data for field in required_fields):
-        return jsonify({"error": "Missing required fields"}), 400
-    
-    # Ensure user matches token
-    if str(data['user_id']) != str(current_user_id):
-        return jsonify({"error": "Unauthorized access to another user's library"}), 403
-    
     try:
+        data = request.get_json()
+        current_user_id = get_jwt_identity()
+        
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(AddToLibraryRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
+        
+        # Ensure user matches token
+        if str(validated_data.user_id) != str(current_user_id):
+            return unauthorized_access_error("Cannot access another user's library")
+        
         # Check if the book exists in the Book table
-        book = Book.query.filter_by(google_books_id=data['google_books_id']).first()
+        book = Book.query.filter_by(google_books_id=validated_data.google_books_id).first()
         if not book:
             book = Book(
-                google_books_id=data['google_books_id'],
-                title=data['title'],
-                authors=data.get('authors', ''),
-                thumbnail=data.get('thumbnail', '')
+                google_books_id=validated_data.google_books_id,
+                title=validated_data.title,
+                authors=validated_data.authors,
+                thumbnail=validated_data.thumbnail
             )
             db.session.add(book)
             db.session.flush() # Flush to get book.id without committing
 
         # Check if ShelfItem exists
-        existing_item = ShelfItem.query.filter_by(user_id=data['user_id'], book_id=book.id).first()
+        existing_item = ShelfItem.query.filter_by(user_id=validated_data.user_id, book_id=book.id).first()
         if existing_item:
             # Update shelf if exists
-            existing_item.shelf_type = data['shelf_type']
+            existing_item.shelf_type = validated_data.shelf_type.value
             item = existing_item
         else:
             item = ShelfItem(
-                user_id=data['user_id'],
+                user_id=validated_data.user_id,
                 book_id=book.id,
-                shelf_type=data['shelf_type']
+                shelf_type=validated_data.shelf_type.value
             )
             db.session.add(item)
         
         db.session.commit()
-        return jsonify({"message": "Book added to shelf", "item": item.to_dict()}), 201
+        return success_response(
+            data={"message": "Book added to shelf", "item": item.to_dict()},
+            status_code=201
+        )
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/library/<int:user_id>', methods=['GET'])
 @jwt_required()
@@ -494,14 +481,14 @@ def get_library(user_id):
     """Get all books in a user's library."""
     current_user_id = get_jwt_identity()
     if str(user_id) != str(current_user_id):
-        return jsonify({"error": "Unauthorized"}), 403
+        return forbidden_error("Cannot access another user's library")
         
     try:
         items = ShelfItem.query.options(joinedload(ShelfItem.book)).filter_by(user_id=user_id).all()
         # Ensure join loads correctly or use manual load if lazy loading fails
-        return jsonify({"library": [item.to_dict() for item in items]}), 200
+        return success_response(data={"library": [item.to_dict() for item in items]})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return internal_error(str(e))
 
 # ==================== READING STATS HELPER FUNCTIONS ====================
 def _update_reading_stats(user_id, book):
@@ -598,38 +585,31 @@ def _get_yearly_stats(user_id, year):
 @jwt_required()
 def update_library_item(item_id):
     """Update a library item (e.g. move to different shelf)."""
-    data = request.json
-    current_user_id = get_jwt_identity()
-    
     try:
+        data = request.get_json()
+        current_user_id = get_jwt_identity()
+        
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(UpdateLibraryItemRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
+        
         item = ShelfItem.query.get(item_id)
         if not item:
-            return jsonify({"error": "Item not found"}), 404
+            return not_found_error("Library item")
             
         if str(item.user_id) != str(current_user_id):
-             return jsonify({"error": "Unauthorized"}), 403
+             return forbidden_error("Cannot modify another user's library item")
 
-        old_shelf_type = item.shelf_type
-        
-        if 'shelf_type' in data:
-            item.shelf_type = data['shelf_type']
-            # Auto-set finished_at timestamp when marking book as finished
-            if data['shelf_type'] == 'finished' and old_shelf_type != 'finished':
-                item.finished_at = datetime.utcnow()
-                # Update reading stats
-                _update_reading_stats(item.user_id, item.book)
-            
-        if 'progress' in data:
-            item.progress = data['progress']
-            
-        if 'rating' in data:
-            item.rating = data['rating']
+        # Update fields if provided
+        if validated_data.shelf_type is not None:
+            item.shelf_type = validated_data.shelf_type.value
             
         db.session.commit()
-        return jsonify({"message": "Item updated", "item": item.to_dict()}), 200
+        return success_response(data={"message": "Item updated", "item": item.to_dict()})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/library/<int:item_id>', methods=['DELETE'])
 @jwt_required()
@@ -639,17 +619,17 @@ def remove_from_library(item_id):
     try:
         item = ShelfItem.query.get(item_id)
         if not item:
-            return jsonify({"error": "Item not found"}), 404
+            return not_found_error("Library item")
         
         if str(item.user_id) != str(current_user_id):
-            return jsonify({"error": "Unauthorized"}), 403
+            return forbidden_error("Cannot delete another user's library item")
             
         db.session.delete(item)
         db.session.commit()
-        return jsonify({"message": "Item removed"}), 200
+        return success_response(data={"message": "Item removed"})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return internal_error(str(e))
 
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///biblio.db')
@@ -666,82 +646,101 @@ price_tracker = get_price_tracker(db)
 @jwt_required()
 def sync_library():
     """Sync a list of books from local storage to the user's account."""
-    current_user_id = get_jwt_identity()
-    data = request.json
-    user_id = data.get('user_id')
-    
-    if str(user_id) != str(current_user_id):
-        return jsonify({"error": "Unauthorized"}), 403
-        
-    items = data.get('items', [])
-    
-    if not user_id:
-        return jsonify({"error": "Missing user_id"}), 400
-        
-    synced_count = 0
-    errors = 0
-    
-    for item_data in items:
-        try:
-            # 1. Ensure Book Exists
-            google_id = item_data.get('id')
-            book = Book.query.filter_by(google_books_id=google_id).first()
-            
-            if not book:
-                volume_info = item_data.get('volumeInfo', {})
-                image_links = volume_info.get('imageLinks', {})
-                authors = volume_info.get('authors', [])
-                if isinstance(authors, list):
-                    authors = ", ".join(authors)
-
-                book = Book(
-                    google_books_id=google_id,
-                    title=volume_info.get('title', 'Untitled'),
-                    authors=authors,
-                    thumbnail=image_links.get('thumbnail', '')
-                )
-                db.session.add(book)
-                db.session.flush() # Flush to get book.id without committing
-
-            # 2. Check ShelfItem
-            existing_item = ShelfItem.query.filter_by(user_id=user_id, book_id=book.id).first()
-            if not existing_item:
-                new_item = ShelfItem(
-                    user_id=user_id,
-                    book_id=book.id,
-                    shelf_type=item_data.get('shelf', 'want')
-                )
-                db.session.add(new_item)
-                synced_count += 1
-                
-        except Exception:
-            errors += 1
-            db.session.rollback() # Rollback on individual item error but continue
-    
     try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(SyncLibraryRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
+        
+        user_id = validated_data.user_id
+        items = validated_data.items
+        
+        if str(user_id) != str(current_user_id):
+            return forbidden_error("Cannot sync to another user's library")
+        
+        synced_count = 0
+        errors = 0
+        
+        for item_data in items:
+            try:
+                # Validate required fields for each item
+                if not isinstance(item_data, dict):
+                    errors += 1
+                    continue
+                    
+                google_id = item_data.get('id')
+                if not google_id:
+                    errors += 1
+                    continue
+                
+                # 1. Ensure Book Exists
+                book = Book.query.filter_by(google_books_id=google_id).first()
+                
+                if not book:
+                    volume_info = item_data.get('volumeInfo', {})
+                    image_links = volume_info.get('imageLinks', {})
+                    authors = volume_info.get('authors', [])
+                    if isinstance(authors, list):
+                        authors = ", ".join(authors)
+
+                    book = Book(
+                        google_books_id=google_id,
+                        title=volume_info.get('title', 'Untitled'),
+                        authors=authors,
+                        thumbnail=image_links.get('thumbnail', '')
+                    )
+                    db.session.add(book)
+                    db.session.commit() # Need ID for next step
+
+                # 2. Check ShelfItem
+                existing_item = ShelfItem.query.filter_by(user_id=user_id, book_id=book.id).first()
+                if not existing_item:
+                    shelf_type = item_data.get('shelf', 'want')
+                    # Validate shelf type
+                    if shelf_type not in ['want', 'current', 'finished']:
+                        shelf_type = 'want'
+                        
+                    new_item = ShelfItem(
+                        user_id=user_id,
+                        book_id=book.id,
+                        shelf_type=shelf_type
+                    )
+                    db.session.add(new_item)
+                    synced_count += 1
+                    
+            except Exception:
+                errors += 1
+                db.session.rollback() # Rollback on individual item error but continue
+        
         db.session.commit()
-        return jsonify({"message": f"Synced {synced_count} items", "errors": errors}), 200
+        return success_response(data={"message": f"Synced {synced_count} items", "errors": errors})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return internal_error(str(e))
 
 @app.route('/api/v1/register', methods=['POST'])
 @rate_limit('auth', max_requests=5)
 def register():
-    # Register a new user and return JWT token
-    data = request.json
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    
-    if not username or not email or not password:
-        return jsonify({"error": "Missing fields"}), 400
-
-    # check if user exists
-    if User.query.filter((User.username==username) | (User.email==email)).first():
-        return jsonify({"error": "User already exists"}), 409
-
+    """Register a new user and return JWT token."""
     try:
+        data = request.get_json()
+        
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(RegisterRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
+        
+        username = validated_data.username
+        email = validated_data.email
+        password = validated_data.password
+
+        # check if user exists
+        if User.query.filter((User.username==username) | (User.email==email)).first():
+            return resource_exists_error("User")
+
         register_user(username, email, password)
         # Fetch the user to get ID
         user = User.query.filter_by(username=username).first()
@@ -749,47 +748,58 @@ def register():
         # Create JWT token
         access_token = create_access_token(identity=str(user.id))
         
-        return jsonify({
-            "message": "User registered successfully",
-            "access_token": access_token,
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email
-            }
-        }), 201
+        return success_response(
+            data={
+                "message": "User registered successfully",
+                "access_token": access_token,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email
+                }
+            },
+            status_code=201
+        )
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return validation_error(str(e))
 
 @app.route('/api/v1/login', methods=['POST'])
 @rate_limit('auth', max_requests=5)
 def login():
-    # Authenticate user and return JWT token
-    data = request.json
-    username_or_email = data.get('username')
-    password = data.get('password')
-    
-    if not username_or_email or not password:
-        return jsonify({"error": "Missing fields"}), 400
+    """Authenticate user and return JWT token."""
+    try:
+        data = request.get_json()
+        
+        # Validate request using Pydantic
+        is_valid, validated_data = validate_request(LoginRequest, data)
+        if not is_valid:
+            return jsonify(validated_data), 400
+        
+        username_or_email = validated_data.username
+        password = validated_data.password
 
-    # Try to find user by username or email
-    user = User.query.filter((User.username==username_or_email) | (User.email==username_or_email)).first()
-    
-    if user and user.check_password(password):
-        # Create JWT token
-        access_token = create_access_token(identity=str(user.id))
+        # Try to find user by username or email
+        user = User.query.filter((User.username==username_or_email) | (User.email==username_or_email)).first()
         
-        return jsonify({
-            "message": "Login successful",
-            "access_token": access_token,
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email
-            }
-        }), 200
-        
-    return jsonify({"error": "Invalid username or password"}), 401
+        if user and user.check_password(password):
+            # Create JWT token
+            access_token = create_access_token(identity=str(user.id))
+            
+            return success_response(
+                data={
+                    "message": "Login successful",
+                    "access_token": access_token,
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email
+                    }
+                }
+            )
+            
+        return auth_error("Invalid username or password")
+    except Exception as e:
+        return internal_error(str(e))
 
 
 # ==================== READING STATS ENDPOINTS ====================

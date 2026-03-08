@@ -185,7 +185,71 @@ const SAMPLE_BOOKS = {
                 { name: 'MemoirLover', rating: 5, text: 'An incredible story of resilience and determination.' },
                 { name: 'Educator', rating: 4, text: 'Shows the transformative power of education.' }
             ]
-        }
+        },
+        {
+    id: 'sample-12',
+    title: 'The Alchemist',
+    author: 'Paulo Coelho',
+    cover: 'https://covers.openlibrary.org/b/id/8225261-M.jpg',
+    rating: 4.3,
+    ratingCount: 5124,
+    description: 'Santiago, a young Andalusian shepherd, dreams of discovering a worldly treasure. His journey takes him across the deserts of Egypt, teaching him about destiny, love, and listening to his heart.',
+    categories: ['Fiction', 'Adventure', 'Inspirational'],
+    spineColor: '#DAA520',
+    textColor: '#1C1C1C',
+    reviews: [
+        { name: 'DreamChaser', rating: 5, text: 'A beautiful and inspiring tale about following your dreams.' },
+        { name: 'BookWorm99', rating: 4, text: 'Simple yet powerful storytelling with deep meaning.' }
+    ]
+},
+{
+    id: 'sample-13',
+    title: 'Atomic Habits',
+    author: 'James Clear',
+    cover: 'https://covers.openlibrary.org/b/id/9251996-M.jpg',
+    rating: 4.6,
+    ratingCount: 8432,
+    description: 'A practical guide to building good habits and breaking bad ones. James Clear explains how small daily improvements compound into remarkable long-term results.',
+    categories: ['Self-Help', 'Productivity', 'Personal Development'],
+    spineColor: '#2E8B57',
+    textColor: '#FFFFFF',
+    reviews: [
+        { name: 'GrowthMindset', rating: 5, text: 'Life-changing insights on building sustainable habits.' },
+        { name: 'FocusBuilder', rating: 4, text: 'Actionable advice backed by science and real examples.' }
+    ]
+},
+{
+    id: 'sample-14',
+    title: 'Deep Work',
+    author: 'Cal Newport',
+    cover: 'https://covers.openlibrary.org/b/id/8370226-M.jpg',
+    rating: 4.5,
+    ratingCount: 6921,
+    description: 'A powerful guide to mastering focused success in a distracted world. Cal Newport explains how cultivating deep, concentrated work can dramatically improve productivity and create meaningful results in professional and personal life.',
+    categories: ['Productivity', 'Self-Improvement', 'Career Development'],
+    spineColor: '#1E3A8A',
+    textColor: '#FFFFFF',
+    reviews: [
+        { name: 'CodeMaster', rating: 5, text: 'A must-read for anyone serious about improving focus and output.' },
+        { name: 'SilentAchiever', rating: 4, text: 'Great framework for eliminating distractions and building deep concentration.' }
+    ]
+},
+{
+    id: 'sample-15',
+    title: 'The Psychology of Money',
+    author: 'Morgan Housel',
+    cover: 'https://covers.openlibrary.org/b/id/10521270-M.jpg',
+    rating: 4.7,
+    ratingCount: 11234,
+    description: 'An insightful exploration of how people think about money and the behaviors that influence financial decisions. Morgan Housel shares timeless lessons on wealth, greed, and happiness through engaging real-world stories.',
+    categories: ['Finance', 'Self-Development', 'Investing'],
+    spineColor: '#8B4513',
+    textColor: '#FFFFFF',
+    reviews: [
+        { name: 'SmartInvestor', rating: 5, text: 'A refreshing perspective on wealth and financial behavior.' },
+        { name: 'WealthBuilder', rating: 4, text: 'Simple yet powerful lessons that change how you view money.' }
+    ]
+}
     ]
 };
 
@@ -631,6 +695,7 @@ class BookshelfRenderer3D {
 
         // Handle Shelf Selection
         const shelfSelect = document.getElementById('modal-shelf-select');
+        // Issue #23: Element binding for the remove button
         const removeBtn = document.getElementById('modal-remove-btn');
         
         if (shelfSelect) {
