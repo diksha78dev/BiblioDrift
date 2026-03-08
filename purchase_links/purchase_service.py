@@ -103,10 +103,16 @@ class PurchaseLinkService:
         
         # Check cache first
         if use_cache:
-            cached_result = self.cache.get(title, author, isbn)
-            if cached_result:
-                self.logger.info(f"Using cached purchase links for: {title}")
-                return cached_result
+            try:
+                cached_result = self.cache.get(title, author, isbn)
+                if cached_result:
+                    self.logger.info(f"Using cached purchase links for: {title}")
+                    return cached_result
+            except KeyError as e:
+                self.logger.warning(f"Cache key error: {e}. Using fresh lookup.")
+            except Exception as e:
+                self.logger.error(f"Cache retrieval failed: {type(e).__name__}: {e}", exc_info=True)
+                # Continue with fresh lookup instead of failing
         
         # Determine which platforms to check
         if platforms is None:
@@ -124,7 +130,16 @@ class PurchaseLinkService:
             }
         
         # Generate links concurrently
-        links = self._generate_links_concurrent(title, author, isbn, platforms)
+        try:
+            links = self._generate_links_concurrent(title, author, isbn, platforms)
+        except Exception as e:
+            self.logger.error(f"Failed to generate purchase links: {type(e).__name__}: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': f'Failed to generate purchase links: {str(e)}',
+                'links': {},
+                'metadata': {}
+            }
         
         # Prepare result
         result = {
@@ -144,7 +159,10 @@ class PurchaseLinkService:
         
         # Cache the result
         if use_cache:
-            self.cache.set(title, author, isbn, result)
+            try:
+                self.cache.set(title, author, isbn, result)
+            except Exception as e:
+                self.logger.warning(f"Failed to cache result: {type(e).__name__}: {e}. Continuing without caching.")
         
         return result
     

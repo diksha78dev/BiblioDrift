@@ -190,18 +190,36 @@ class GoodReadsReviewScraper:
                         reviews.append(review_data)
                         self.logger.debug(f"Extracted review {i+1}: {len(review_data['text'])} chars")
                     
+                except AttributeError as e:
+                    self.logger.warning(f"Missing attribute parsing review {i+1}: {e}. Element may have changed structure.")
+                    continue
+                except KeyError as e:
+                    self.logger.warning(f"Missing key parsing review {i+1}: {e}. Expected data field not found.")
+                    continue
                 except Exception as e:
-                    self.logger.warning(f"Error parsing review {i+1}: {e}")
+                    self.logger.error(f"Unexpected error parsing review {i+1}: {type(e).__name__}: {e}", exc_info=True)
                     continue
                     
             self.logger.info(f"Successfully scraped {len(reviews)} reviews")
             return reviews
             
-        except requests.RequestException as e:
-            self.logger.error(f"Network error scraping reviews from {book_url}: {e}")
+        except requests.exceptions.Timeout as e:
+            self.logger.error(f"Request timeout scraping reviews from {book_url}: {e}")
             raise
+        except requests.exceptions.ConnectionError as e:
+            self.logger.error(f"Network connection error scraping reviews from {book_url}: {e}")
+            raise
+        except requests.exceptions.HTTPError as e:
+            self.logger.error(f"HTTP error {e.response.status_code} scraping reviews from {book_url}: {e}")
+            raise
+        except requests.RequestException as e:
+            self.logger.error(f"Network error scraping reviews from {book_url}: {type(e).__name__}: {e}", exc_info=True)
+            raise
+        except ValueError as e:
+            self.logger.error(f"Data parsing error (invalid HTML structure): {e}")
+            return reviews
         except Exception as e:
-            self.logger.error(f"Unexpected error scraping reviews: {e}")
+            self.logger.error(f"Unexpected error scraping reviews: {type(e).__name__}: {e}", exc_info=True)
             return reviews
     
     def _extract_review_data(self, review_elem) -> Optional[Dict]:

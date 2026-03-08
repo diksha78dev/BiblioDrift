@@ -38,6 +38,9 @@ numpy>=1.26.0
 # Purchase Links (new)
 urllib3>=1.26.0
 
+# Security: Credential Encryption
+cryptography>=41.0.0
+
 # Optional: For future database integration
 # sqlalchemy==2.0.21
 # flask-sqlalchemy==3.0.5

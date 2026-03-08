@@ -54,19 +54,27 @@ class PromptTemplates:
     """Configurable prompt templates for different use cases."""
     
     @staticmethod
-    def get_book_note_prompt(title: str, author: str, description: str, mood_context: str = "") -> str:
-        """Generate book note prompt template."""
+    def get_book_note_prompt(title: str, author: str, description: str, mood_context: str = "", vibe: str = "") -> str:
+        """Generate book note prompt template with vibe support."""
         template = os.getenv('BOOK_NOTE_PROMPT_TEMPLATE', 
-            """Write a short, evocative "vibe check" for this book, like a handwritten note from a passionate bookseller.
+            """You are a cozy, knowledgeable bookseller in a quiet shop. A customer is looking for a book recommendation based on their current vibe: "{vibe}".
 
 Book: "{title}" by {author}
 Description: {description}
 {mood_context}
 
-Constraint: Strictly under {max_words} words.
-Style: Atmospheric, emotional, and specific to this book's unique feeling.
-Avoid generic praise (e.g., "great book"). Focus on the *experience* of reading it (e.g., "Perfect for rainy afternoons," "A slow-burn heartbreak," "Feels like a warm hug").
-Output ONLY the vibe check text. Do NOT include "Bookseller's Note:" or any other prefix.""")
+IMPORTANT: Do NOT use hardcoded lists. Generate a recommendation dynamically based purely on the provided vibe: "{vibe}".
+
+Output a JSON object with the following structure:
+{{
+  "title": "A compelling book title that matches the vibe",
+  "author": "Author name that fits the recommendation", 
+  "cover_url": "URL or placeholder for book cover image",
+  "bookseller_note": "A warm, 3-4 sentence paragraph describing the reading experience for this specific vibe"
+}}
+
+Constraint: Keep the bookseller_note under 50 words and make it feel personal and atmospheric.
+Style: Warm, insightful, like a trusted bookseller sharing a hidden gem.""")
         
         max_words = os.getenv('BOOK_NOTE_MAX_WORDS', '30')
         
@@ -75,6 +83,7 @@ Output ONLY the vibe check text. Do NOT include "Bookseller's Note:" or any othe
             author=author, 
             description=description,
             mood_context=mood_context,
+            vibe=vibe,
             max_words=max_words
         )
     
@@ -158,8 +167,15 @@ class LLMService:
             try:
                 self.gemini_client = genai.Client(api_key=api_key)
                 logger.info(f"Gemini client initialized. configured model: {self.config['gemini_model']}")
+            except ImportError as e:
+                logger.warning(f"Google GenAI library not installed: {e}. Install with: pip install google-genai")
+                self.gemini_client = None
+            except ValueError as e:
+                logger.error(f"Invalid Gemini API key configuration: {e}")
+                self.gemini_client = None
             except Exception as e:
-                logger.error(f"Failed to setup Gemini: {e}")
+                logger.error(f"Failed to setup Gemini: {e}", exc_info=True)
+                self.gemini_client = None
     
     def is_available(self) -> bool:
         """Check if any LLM service is available."""
@@ -203,7 +219,7 @@ class LLMService:
                 return self._generate_with_gemini(prompt, max_tokens)
                 
         except Exception as e:
-            logger.error(f"LLM generation failed (attempt {retry_count + 1}): {e}")
+            logger.error(f"LLM generation failed (attempt {retry_count + 1}): {type(e).__name__}: {e}", exc_info=True)
             
             # Retry logic for transient errors
             if retry_count < max_retries and self._is_retryable_error(e):
@@ -241,8 +257,23 @@ class LLMService:
                 temperature=self.config['openai_temperature']
             )
             return response.choices[0].message.content.strip()
+        except ImportError as e:
+            logger.error(f"OpenAI library not installed: {e}. Install with: pip install openai")
+            return None
+        except ValueError as e:
+            logger.error(f"Invalid OpenAI API key or configuration: {e}")
+            return None
+        except openai.RateLimitError as e:
+            logger.warning(f"OpenAI rate limit exceeded: {e}")
+            raise  # Re-raise for retry handling
+        except openai.APITimeoutError as e:
+            logger.warning(f"OpenAI request timed out: {e}")
+            raise  # Re-raise for retry handling
+        except openai.APIConnectionError as e:
+            logger.warning(f"OpenAI connection error: {e}")
+            raise  # Re-raise for retry handling
         except Exception as e:
-            logger.error(f"OpenAI generation failed: {e}")
+            logger.error(f"OpenAI generation failed: {type(e).__name__}: {e}", exc_info=True)
             return None
     
     def _generate_with_groq(self, prompt: str, max_tokens: int) -> Optional[str]:
@@ -255,13 +286,32 @@ class LLMService:
                 temperature=self.config['groq_temperature']
             )
             return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error(f"Groq generation failed: {e}")
+        except ImportError as e:
+            logger.error(f"Groq library not installed: {e}. Install with: pip install groq")
             return None
+        except ValueError as e:
+            logger.error(f"Invalid Groq API key or configuration: {e}")
+            return None
+        except Exception as e:
+            # Check for specific Groq error types
+            error_type = type(e).__name__
+            if 'RateLimit' in error_type or 'rate limit' in str(e).lower():
+                logger.warning(f"Groq rate limit exceeded: {e}")
+                raise  # Re-raise for retry handling
+            elif 'Timeout' in error_type or 'timeout' in str(e).lower():
+                logger.warning(f"Groq request timed out: {e}")
+                raise  # Re-raise for retry handling
+            elif 'Connection' in error_type or 'connection' in str(e).lower():
+                logger.warning(f"Groq connection error: {e}")
+                raise  # Re-raise for retry handling
+            else:
+                logger.error(f"Groq generation failed: {error_type}: {e}", exc_info=True)
+                return None
     
     def _generate_with_gemini(self, prompt: str, max_tokens: int) -> Optional[str]:
         """Generate text using Gemini."""
         try:
+            from google.genai import types
             response = self.gemini_client.models.generate_content(
                 model=self.config['gemini_model'],
                 contents=prompt,
@@ -271,9 +321,26 @@ class LLMService:
                 )
             )
             return response.text.strip()
-        except Exception as e:
-            logger.error(f"Gemini generation failed: {e}")
+        except ImportError as e:
+            logger.error(f"Google GenAI library not installed: {e}")
             return None
+        except ValueError as e:
+            logger.error(f"Invalid Gemini API key or configuration: {e}")
+            return None
+        except Exception as e:
+            error_str = str(e).lower()
+            if 'rate limit' in error_str or 'quota' in error_str:
+                logger.warning(f"Gemini rate limit exceeded: {e}")
+                raise  # Re-raise for retry handling
+            elif 'timeout' in error_str:
+                logger.warning(f"Gemini request timed out: {e}")
+                raise  # Re-raise for retry handling
+            elif 'connection' in error_str or 'network' in error_str:
+                logger.warning(f"Gemini connection error: {e}")
+                raise  # Re-raise for retry handling
+            else:
+                logger.error(f"Gemini generation failed: {type(e).__name__}: {e}", exc_info=True)
+                return None
 
 # Initialize LLM service
 llm_service = LLMService()
@@ -281,17 +348,18 @@ llm_service = LLMService()
 # Export for external use
 __all__ = ['generate_book_note', 'get_ai_recommendations', 'get_book_mood_tags_safe', 'generate_chat_response', 'llm_service', 'LLMService', 'PromptTemplates']
 
-def generate_book_note(description, title="", author=""):
+def generate_book_note(description, title="", author="", vibe=""):
     """
-    Generate book note using LLM with mood analysis enhancement.
+    Generate book note using LLM with vibe-based recommendations.
     
     Args:
         description: Book description
         title: Book title
         author: Book author
+        vibe: User's current vibe for recommendation
         
     Returns:
-        Generated book vibe/note
+        Generated book recommendation as JSON object or fallback text
     """
     # Try mood analysis first for context
     mood_context = ""
@@ -305,10 +373,25 @@ def generate_book_note(description, title="", author=""):
     # Use LLM if available
     if llm_service.is_available():
         try:
-            prompt = PromptTemplates.get_book_note_prompt(title, author, description, mood_context)
+            prompt = PromptTemplates.get_book_note_prompt(title, author, description, mood_context, vibe)
             llm_response = llm_service.generate_text(prompt, llm_service.config['book_note_max_tokens'])
+            
             if llm_response:
-                return llm_response
+                # Try to parse as JSON first
+                try:
+                    import json
+                    parsed_response = json.loads(llm_response)
+                    if isinstance(parsed_response, dict) and all(key in parsed_response for key in ['title', 'author', 'bookseller_note']):
+                        logger.info(f"Successfully generated structured recommendation for vibe: {vibe}")
+                        return parsed_response
+                except (json.JSONDecodeError, TypeError):
+                    # Fallback to plain text if JSON parsing fails
+                    logger.warning("LLM response was not valid JSON, using as plain text")
+                    return {
+                        "vibe": llm_response,
+                        "title": title or "A Perfect Match",
+                        "author": author or "Recommended Author"
+                    }
                 
         except Exception as e:
             logger.error(f"LLM book note generation failed: {e}")
@@ -322,22 +405,22 @@ def generate_book_note(description, title="", author=""):
     
     # Basic fallback
     if len(description) > 200:
-        return "A deep, complex narrative that readers find emotionally resonant."
+        return {"vibe": "A deep, complex narrative that readers find emotionally resonant."}
     elif len(description) > 100:
-        return "A compelling story with layers waiting to be discovered."
+        return {"vibe": "A compelling story with layers waiting to be discovered."}
     elif "mystery" in description.lower():
-        return "A mysterious tale that will keep you guessing."
+        return {"vibe": "A mysterious tale that will keep you guessing."}
     elif "romance" in description.lower():
-        return "A heartwarming story perfect for cozy reading."
+        return {"vibe": "A heartwarming story perfect for cozy reading."}
     else:
-        return "A delightful read for any quiet moment."
+        return {"vibe": "A delightful read for any quiet moment."}
 
 @cache_recommendations
 def get_ai_recommendations(query):
     """
     Generate AI-powered book recommendations based on query.
     
-    Args:
+{{ ... }
         query: User's search query or mood
         
     Returns:
