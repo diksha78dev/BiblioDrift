@@ -1,0 +1,15 @@
+{
+  "name": "BiblioDrift API Collection",
+  "version": "1.0.0",
+  "items": [],
+  "environments": [
+    {
+      "name": "local",
+      "path": "./environments/local.bru"
+    },
+    {
+      "name": "default",
+      "path": "./environments/default.bru"
+    }
+  ]
+}

@@ -10,6 +10,11 @@ mood_analysis/mood_cache.json
 .env.local
 .env.production
 
+# Bruno API Collection - Sensitive files
+bruno/environments/local.bru
+*.token
+*.secret
+
 # API keys and secrets
 *.key
 secrets/

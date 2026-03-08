@@ -1,9 +1,18 @@
 # AI service logic with LLM integration (OpenAI/Gemini)
 # Implements 'generate_book_note' and 'get_ai_recommendations'. All recommendations MUST be AI-based.
+# Enhanced with comprehensive caching for expensive operations
 
 import os
 import logging
 from typing import Optional
+
+# Import caching decorators
+from cache_service import (
+    cache_recommendations, 
+    cache_mood_tags, 
+    cache_chat_response,
+    cache_mood_analysis
+)
 
 # Setup logging from environment
 logging.basicConfig(
@@ -158,8 +167,15 @@ class LLMService:
             try:
                 self.gemini_client = genai.Client(api_key=api_key)
                 logger.info(f"Gemini client initialized. configured model: {self.config['gemini_model']}")
+            except ImportError as e:
+                logger.warning(f"Google GenAI library not installed: {e}. Install with: pip install google-genai")
+                self.gemini_client = None
+            except ValueError as e:
+                logger.error(f"Invalid Gemini API key configuration: {e}")
+                self.gemini_client = None
             except Exception as e:
-                logger.error(f"Failed to setup Gemini: {e}")
+                logger.error(f"Failed to setup Gemini: {e}", exc_info=True)
+                self.gemini_client = None
     
     def is_available(self) -> bool:
         """Check if any LLM service is available."""
@@ -203,7 +219,7 @@ class LLMService:
                 return self._generate_with_gemini(prompt, max_tokens)
                 
         except Exception as e:
-            logger.error(f"LLM generation failed (attempt {retry_count + 1}): {e}")
+            logger.error(f"LLM generation failed (attempt {retry_count + 1}): {type(e).__name__}: {e}", exc_info=True)
             
             # Retry logic for transient errors
             if retry_count < max_retries and self._is_retryable_error(e):
@@ -241,8 +257,23 @@ class LLMService:
                 temperature=self.config['openai_temperature']
             )
             return response.choices[0].message.content.strip()
+        except ImportError as e:
+            logger.error(f"OpenAI library not installed: {e}. Install with: pip install openai")
+            return None
+        except ValueError as e:
+            logger.error(f"Invalid OpenAI API key or configuration: {e}")
+            return None
+        except openai.RateLimitError as e:
+            logger.warning(f"OpenAI rate limit exceeded: {e}")
+            raise  # Re-raise for retry handling
+        except openai.APITimeoutError as e:
+            logger.warning(f"OpenAI request timed out: {e}")
+            raise  # Re-raise for retry handling
+        except openai.APIConnectionError as e:
+            logger.warning(f"OpenAI connection error: {e}")
+            raise  # Re-raise for retry handling
         except Exception as e:
-            logger.error(f"OpenAI generation failed: {e}")
+            logger.error(f"OpenAI generation failed: {type(e).__name__}: {e}", exc_info=True)
             return None
     
     def _generate_with_groq(self, prompt: str, max_tokens: int) -> Optional[str]:
@@ -255,13 +286,32 @@ class LLMService:
                 temperature=self.config['groq_temperature']
             )
             return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error(f"Groq generation failed: {e}")
+        except ImportError as e:
+            logger.error(f"Groq library not installed: {e}. Install with: pip install groq")
             return None
+        except ValueError as e:
+            logger.error(f"Invalid Groq API key or configuration: {e}")
+            return None
+        except Exception as e:
+            # Check for specific Groq error types
+            error_type = type(e).__name__
+            if 'RateLimit' in error_type or 'rate limit' in str(e).lower():
+                logger.warning(f"Groq rate limit exceeded: {e}")
+                raise  # Re-raise for retry handling
+            elif 'Timeout' in error_type or 'timeout' in str(e).lower():
+                logger.warning(f"Groq request timed out: {e}")
+                raise  # Re-raise for retry handling
+            elif 'Connection' in error_type or 'connection' in str(e).lower():
+                logger.warning(f"Groq connection error: {e}")
+                raise  # Re-raise for retry handling
+            else:
+                logger.error(f"Groq generation failed: {error_type}: {e}", exc_info=True)
+                return None
     
     def _generate_with_gemini(self, prompt: str, max_tokens: int) -> Optional[str]:
         """Generate text using Gemini."""
         try:
+            from google.genai import types
             response = self.gemini_client.models.generate_content(
                 model=self.config['gemini_model'],
                 contents=prompt,
@@ -271,9 +321,26 @@ class LLMService:
                 )
             )
             return response.text.strip()
-        except Exception as e:
-            logger.error(f"Gemini generation failed: {e}")
+        except ImportError as e:
+            logger.error(f"Google GenAI library not installed: {e}")
             return None
+        except ValueError as e:
+            logger.error(f"Invalid Gemini API key or configuration: {e}")
+            return None
+        except Exception as e:
+            error_str = str(e).lower()
+            if 'rate limit' in error_str or 'quota' in error_str:
+                logger.warning(f"Gemini rate limit exceeded: {e}")
+                raise  # Re-raise for retry handling
+            elif 'timeout' in error_str:
+                logger.warning(f"Gemini request timed out: {e}")
+                raise  # Re-raise for retry handling
+            elif 'connection' in error_str or 'network' in error_str:
+                logger.warning(f"Gemini connection error: {e}")
+                raise  # Re-raise for retry handling
+            else:
+                logger.error(f"Gemini generation failed: {type(e).__name__}: {e}", exc_info=True)
+                return None
 
 # Initialize LLM service
 llm_service = LLMService()
@@ -348,6 +415,7 @@ def generate_book_note(description, title="", author="", vibe=""):
     else:
         return {"vibe": "A delightful read for any quiet moment."}
 
+@cache_recommendations
 def get_ai_recommendations(query):
     """
     Generate AI-powered book recommendations based on query.
@@ -387,6 +455,7 @@ def get_ai_recommendations(query):
     
     return f"Based on your interest in '{query}', I'd recommend exploring books that capture similar themes and emotional resonance."
 
+@cache_mood_tags
 def get_book_mood_tags_safe(title: str, author: str = "") -> list:
     """
     Safe wrapper for getting book mood tags.
@@ -406,6 +475,7 @@ def get_book_mood_tags_safe(title: str, author: str = "") -> list:
     
     return []
 
+@cache_chat_response
 def generate_chat_response(user_message, conversation_history=[]):
     """
     Generate truly AI-driven chat responses for the bookseller interface.
