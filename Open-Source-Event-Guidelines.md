@@ -1,6 +1,6 @@
-# BiblioDrift Contributor Guide for ACM Sourcery
+# BiblioDrift Contributor Guide for Open Source Events
 
-This document is tailored for contributors participating in the open source event Sourcery by ACM IGDTUW.
+This document is tailored for contributors participating in all open source events: _Nexus Spring of Code, ACM Sourcery and Apertre3.0._
 
 [![BiblioDrift - Issues](https://img.shields.io/badge/BiblioDrift-Issues-9113ff?style=for-the-badge)](https://github.com/devanshi14malhotra/BiblioDrift/issues)
 
@@ -202,19 +202,20 @@ cd BiblioDrift
 - Docs were updated if behavior changed.
 
 ### Need Help?
-- Check the README and CONTRIBUTING files.
+- Check the README.md and CONTRIBUTING.md files.
 - Open an issue if something is unclear.
 - Feel free to propose new ideas if they fit the project style.
 
 ---
 
-## 7. Sourcery Event Context
+## 7. Open Source Event Context
 
-This repository is participating in Sourcery by ACM IGDTUW. Contributors are encouraged to start with beginner-friendly issues, then move into recommendation logic, mood flows, and UI refinements.
+Currently, this repository is a part of the _**Nexus Spring of Code** Open Source Event_. This repository has participated in _**Sourcery** by ACM IGDTUW_ and _**Apertre3.0** by Resourcio Community_. Contributors are encouraged to start with beginner-friendly issues, then move into recommendation logic, mood flows, and UI refinements.
+
 
 If you are new to the project, start with one of the Good First Issues above and open a draft PR early for feedback.
 
-Happy building and all the best for Sourcery.
+Happy building and all the best!!!
 
 ```bash
 If you like this project, please consider giving the repository a ⭐ STAR ⭐.
