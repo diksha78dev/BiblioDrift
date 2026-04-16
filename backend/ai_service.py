@@ -366,6 +366,7 @@ llm_service = LLMService()
 # Export for external use
 __all__ = ['generate_book_note', 'get_ai_recommendations', 'get_book_mood_tags_safe', 'generate_chat_response', 'llm_service', 'LLMService', 'PromptTemplates']
 
+@cache_recommendations
 def generate_book_note(description, title="", author="", vibe=""):
     """
     Generate book note using LLM with vibe-based recommendations.
