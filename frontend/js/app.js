@@ -235,6 +235,20 @@ class BookRenderer {
             </div>
         `;
 
+        // Interaction: Progress Slider
+        const slider = scene.querySelector('.progress-slider');
+        if (slider) {
+            slider.addEventListener('change', (e) => {
+                const newProgress = parseInt(e.target.value);
+                if (this.libraryManager) {
+                    this.libraryManager.updateBook(id, { progress: newProgress });
+                }
+                // Update small tag
+                const small = slider.nextElementSibling;
+                if (small) small.textContent = `${newProgress}% read`;
+            });
+        }
+
         // Interaction: Flip
         const bookEl = scene.querySelector('.book');
         scene.addEventListener('click', (e) => {
@@ -474,28 +488,39 @@ class LibraryManager {
                     const remoteBook = {
                         id: item.google_books_id,
                         db_id: item.id,
+                        version: item.version,
                         volumeInfo: {
                             title: item.title,
                             authors: item.authors ? item.authors.split(', ') : [],
                             imageLinks: { thumbnail: item.thumbnail }
                         },
-                        // Preserve local progress if exists, else default
-                        progress: existing ? existing.book.progress : (item.shelf_type === 'current' ? 0 : null),
+                        // Backend data is authoritative during sync DOWN
+                        progress: item.progress,
                         date_added: item.created_at || new Date().toISOString()
                     };
 
                     if (existing) {
-                        // Check if shelf matches
-                        if (existing.shelf !== item.shelf_type) {
-                            // Backend wins on shelf conflict (syncing FROM server)
-                            // Remove from old shelf
-                            this.library[existing.shelf] = this.library[existing.shelf].filter(b => b.id !== item.google_books_id);
-                            // Add to new shelf
-                            this.library[item.shelf_type].push(remoteBook);
-                        } else {
-                            // Update details (e.g. db_id might be missing locally if added offline)
-                            Object.assign(existing.book, remoteBook);
+                        const localBook = existing.book;
+                        
+                        // Conflict Resolution Logic:
+                        // If backend has a higher version, it wins.
+                        if (item.version > (localBook.version || 0)) {
+                            if (existing.shelf !== item.shelf_type) {
+                                // Remove from old shelf
+                                this.library[existing.shelf] = this.library[existing.shelf].filter(b => b.id !== item.google_books_id);
+                                // Add to new shelf
+                                this.library[item.shelf_type].push(remoteBook);
+                            } else {
+                                // Update details in place
+                                Object.assign(localBook, remoteBook);
+                            }
+                        } else if (item.version === (localBook.version || 0)) {
+                            // Versions match, just ensure db_id is set
+                            localBook.db_id = item.id;
                         }
+                        // If item.version < localBook.version, we have unsynced local changes.
+                        // syncLocalToBackend will handle pushing these.
+
                         // Mark as processed/merged
                         localBooksMap.delete(item.google_books_id);
                     } else {
@@ -541,16 +566,14 @@ class LibraryManager {
         ['current', 'want', 'finished'].forEach(shelf => {
             if (this.library[shelf]) {
                 this.library[shelf].forEach(book => {
-                    // Avoid syncing items that obviously came from backend (have db_id) 
-                    // UNLESS you want to support offline updates (which is harder).
-                    // The requirement is "upload anonymous local library when user signs up".
-                    // Anonymous items won't have db_id.
-                    if (!book.db_id) {
-                        itemsToSync.push({
-                            ...book,
-                            shelf: shelf
-                        });
-                    }
+                    // Sync both new (anonymous) items and potentially updated items (with db_id)
+                    // If book.db_id is present, it's an update. If not, it's a new item.
+                    itemsToSync.push({
+                        ...book,
+                        shelf: shelf,
+                        // Ensure version is sent if present
+                        version: book.version || 0
+                    });
                 });
             }
         });
@@ -575,12 +598,19 @@ class LibraryManager {
                 if (process.env.NODE_ENV === 'development') {
                     console.log("Sync result:", data);
                 }
-                showToast(`Synced ${data.message}`, "success");
+                
+                if (data.conflicts > 0) {
+                    showToast(`Synced ${data.message} (${data.conflicts} conflicts resolved by server)`, "info");
+                } else {
+                    showToast(`Synced ${data.message}`, "success");
+                }
 
-                // After upload, pull fresh state from backend to get the new DB IDs
+                // After upload, pull fresh state from backend to get the new DB IDs and versions
                 await this.syncWithBackend();
             } else {
-                console.error("Backend refused sync");
+                const data = await res.json();
+                console.error("Backend refused sync", data);
+                showToast("Sync failed: " + (data.error || "Server error"), "error");
             }
         } catch (e) {
             console.error("Sync upload failed", e);
@@ -677,12 +707,66 @@ class LibraryManager {
 
                 if (res.ok) {
                     const data = await res.json();
-                    // Store the DB ID back to the local object
+                    // Store the DB ID and version back to the local object
                     enrichedBook.db_id = data.item.id;
+                    enrichedBook.version = data.item.version;
                     this.saveLocally();
                 }
             } catch (e) {
                 console.error("Failed to save to backend", e);
+                showToast("Saved locally (Sync failed)", "info");
+            }
+        }
+    }
+
+
+    async updateBook(id, updates) {
+        const result = this.findBookInShelf(id);
+        if (!result) return;
+
+        const { shelf, book } = result;
+
+        // 1. Update Local State
+        Object.assign(book, updates);
+        
+        // Local "Finished" logic
+        if (updates.progress === 100 && shelf !== 'finished') {
+            // Remove from current, add to finished
+            this.library[shelf] = this.library[shelf].filter(b => b.id !== id);
+            this.library.finished.push(book);
+            showToast(`Congrats! You finished ${book.volumeInfo.title}!`, "success");
+        }
+        
+        this.saveLocally();
+
+        // 2. Update Backend
+        const user = this.getUser();
+        if (user && book.db_id) {
+            try {
+                const res = await fetch(`${this.apiBase}/library/${book.db_id}`, {
+                    method: 'PUT',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify({
+                        ...updates,
+                        version: book.version // Optimistic locking
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    book.version = data.item.version;
+                    this.saveLocally();
+                } else if (res.status === 409) {
+                    const data = await res.json();
+                    showToast("Conflict detected! Syncing with server...", "error");
+                    // Optionally show a more detailed merge UI here
+                    await this.syncWithBackend();
+                } else {
+                    const data = await res.json();
+                    console.error("Update failed:", data.error);
+                }
+            } catch (e) {
+                console.error("Failed to update backend", e);
                 showToast("Saved locally (Sync failed)", "info");
             }
         }

@@ -502,10 +502,11 @@ def add_to_library():
             db.session.flush() # Flush to get book.id without committing
 
         # Check if ShelfItem exists
-        existing_item = ShelfItem.query.filter_by(user_id=validated_data.user_id, book_id=book.id).first()
+        existing_item = ShelfItem.query.filter_by(user_id=validated_data.user_id, book_id=book.id).with_for_update().first()
         if existing_item:
             # Update shelf if exists
             existing_item.shelf_type = validated_data.shelf_type.value
+            existing_item.version += 1
             item = existing_item
         else:
             item = ShelfItem(
@@ -643,16 +644,37 @@ def update_library_item(item_id):
         if not is_valid:
             return jsonify(validated_data), 400
         
-        item = ShelfItem.query.get(item_id)
+        item = ShelfItem.query.with_for_update().get(item_id)
         if not item:
             return not_found_error("Library item")
             
         if str(item.user_id) != str(current_user_id):
              return forbidden_error("Cannot modify another user's library item")
 
+        # Optimistic locking check
+        if validated_data.version is not None and item.version != validated_data.version:
+            return error_response(
+                ErrorCodes.CONFLICT, 
+                "The item has been modified on another device. Please refresh and try again.", 
+                409,
+                additional_data={"current_version": item.version, "server_item": item.to_dict()}
+            )
+
         # Update fields if provided
         if validated_data.shelf_type is not None:
             item.shelf_type = validated_data.shelf_type.value
+        
+        if validated_data.progress is not None:
+            item.progress = validated_data.progress
+            if item.progress == 100:
+                item.shelf_type = 'finished'
+                item.finished_at = datetime.utcnow()
+        
+        if validated_data.rating is not None:
+            item.rating = validated_data.rating
+
+        # Increment version on update
+        item.version += 1
             
         db.session.commit()
         return success_response(data={"message": "Item updated", "item": item.to_dict()})
@@ -709,61 +731,82 @@ def sync_library():
             return forbidden_error("Cannot sync to another user's library")
         
         synced_count = 0
+        conflicts = 0
         errors = 0
         
         for item_data in items:
             try:
-                # Validate required fields for each item
-                if not isinstance(item_data, dict):
-                    errors += 1
-                    continue
+                # Use savepoint for each item so one failure doesn't roll back the whole sync
+                with db.session.begin_nested():
+                    # Validate required fields for each item
+                    if not isinstance(item_data, dict):
+                        errors += 1
+                        continue
+                        
+                    google_id = item_data.get('id')
+                    if not google_id:
+                        errors += 1
+                        continue
                     
-                google_id = item_data.get('id')
-                if not google_id:
-                    errors += 1
-                    continue
-                
-                # 1. Ensure Book Exists
-                book = Book.query.filter_by(google_books_id=google_id).first()
-                
-                if not book:
-                    volume_info = item_data.get('volumeInfo', {})
-                    image_links = volume_info.get('imageLinks', {})
-                    authors = volume_info.get('authors', [])
-                    if isinstance(authors, list):
-                        authors = ", ".join(authors)
+                    # 1. Ensure Book Exists
+                    book = Book.query.filter_by(google_books_id=google_id).first()
+                    
+                    if not book:
+                        volume_info = item_data.get('volumeInfo', {})
+                        image_links = volume_info.get('imageLinks', {})
+                        authors = volume_info.get('authors', [])
+                        if isinstance(authors, list):
+                            authors = ", ".join(authors)
 
-                    book = Book(
-                        google_books_id=google_id,
-                        title=volume_info.get('title', 'Untitled'),
-                        authors=authors,
-                        thumbnail=image_links.get('thumbnail', '')
-                    )
-                    db.session.add(book)
-                    db.session.commit() # Need ID for next step
+                        book = Book(
+                            google_books_id=google_id,
+                            title=volume_info.get('title', 'Untitled'),
+                            authors=authors,
+                            thumbnail=image_links.get('thumbnail', '')
+                        )
+                        db.session.add(book)
+                        db.session.flush() # Get ID
 
-                # 2. Check ShelfItem
-                existing_item = ShelfItem.query.filter_by(user_id=user_id, book_id=book.id).first()
-                if not existing_item:
+                    # 2. Check ShelfItem with lock
+                    existing_item = ShelfItem.query.filter_by(user_id=user_id, book_id=book.id).with_for_update().first()
                     shelf_type = item_data.get('shelf', 'want')
-                    # Validate shelf type
                     if shelf_type not in ['want', 'current', 'finished']:
                         shelf_type = 'want'
+
+                    if not existing_item:
+                        new_item = ShelfItem(
+                            user_id=user_id,
+                            book_id=book.id,
+                            shelf_type=shelf_type,
+                            progress=item_data.get('progress', 0)
+                        )
+                        db.session.add(new_item)
+                        synced_count += 1
+                    else:
+                        # Conflict Handling / Merge Strategy
+                        remote_version = item_data.get('version')
+                        if remote_version and remote_version < existing_item.version:
+                            # Backend is newer, consider this a potential collision
+                            conflicts += 1
+                            continue 
                         
-                    new_item = ShelfItem(
-                        user_id=user_id,
-                        book_id=book.id,
-                        shelf_type=shelf_type
-                    )
-                    db.session.add(new_item)
-                    synced_count += 1
+                        # Update existing
+                        existing_item.shelf_type = shelf_type
+                        existing_item.progress = item_data.get('progress', existing_item.progress)
+                        existing_item.version += 1
+                        synced_count += 1
                     
-            except Exception:
+            except Exception as e:
+                logger.error(f"Sync error for item {item_data.get('id', 'unknown')}: {e}")
                 errors += 1
-                db.session.rollback() # Rollback on individual item error but continue
+                # begin_nested() automatically rolls back on exception within the block
         
         db.session.commit()
-        return success_response(data={"message": f"Synced {synced_count} items", "errors": errors})
+        return success_response(data={
+            "message": f"Synced {synced_count} items", 
+            "errors": errors,
+            "conflicts": conflicts
+        })
     except Exception as e:
         db.session.rollback()
         return internal_error(str(e))
