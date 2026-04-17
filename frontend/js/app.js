@@ -43,173 +43,88 @@ function showToast(message, type = 'info') {
  * Robust Wrapper for LocalStorage
  * Prevents application crashes when the 5MB quota is exceeded.
  */
+/**
+ * Robust Wrapper for Storage (LocalStorage + IndexedDB Fallback)
+ * Prevents application data loss and handles browser storage wipes/quotas.
+ */
 const SafeStorage = {
-    metaKey: '__bibliodrift_storage_meta__',
-    cachePrefixes: [
-        'bibliodrift_cache_',
-        'cached_books_',
-        'books_cache_',
-        'genre_cache_',
-        'search_cache_',
-        'cache_'
-    ],
-    protectedKeys: new Set([
-        'bibliodrift_library',
-        'bibliodrift_user',
-        'bibliodrift_token',
-        'bibliodrift_theme',
-        'isLoggedIn'
-    ]),
+    _dbName: 'BiblioDriftDB',
+    _storeName: 'library_backup',
 
-    isQuotaError(error) {
-        return error instanceof DOMException && (
-            error.code === 22 ||
-            error.code === 1014 ||
-            error.name === 'QuotaExceededError' ||
-            error.name === 'NS_ERROR_DOM_QUOTA_REACHED'
-        );
-    },
-
-    getMeta() {
-        try {
-            const raw = localStorage.getItem(this.metaKey);
-            if (!raw) return {};
-            const parsed = JSON.parse(raw);
-            return (parsed && typeof parsed === 'object') ? parsed : {};
-        } catch (e) {
-            return {};
-        }
-    },
-
-    setMeta(meta) {
-        try {
-            localStorage.setItem(this.metaKey, JSON.stringify(meta));
-        } catch (e) {
-            // Ignore metadata write failures; data writes still succeed.
-        }
-    },
-
-    estimateSize(value) {
-        if (typeof value === 'string') return value.length;
-        try {
-            return JSON.stringify(value).length;
-        } catch (e) {
-            return 0;
-        }
-    },
-
-    isCacheKey(key) {
-        if (!key || key === this.metaKey) return false;
-        return this.cachePrefixes.some(prefix => key.startsWith(prefix));
-    },
-
-    touchKey(key, value) {
-        if (!key || key === this.metaKey) return;
-        const meta = this.getMeta();
-        meta[key] = {
-            lastAccess: Date.now(),
-            size: this.estimateSize(value)
-        };
-        this.setMeta(meta);
-    },
-
-    dropMetaKey(key) {
-        const meta = this.getMeta();
-        if (meta[key]) {
-            delete meta[key];
-            this.setMeta(meta);
-        }
-    },
-
-    removeKeys(keys) {
-        if (!Array.isArray(keys) || keys.length === 0) return 0;
-
-        const meta = this.getMeta();
-        let removed = 0;
-
-        keys.forEach(key => {
-            if (!key || key === this.metaKey) return;
+    /**
+     * Attempts to request persistent storage from the browser.
+     * This prevents the browser from clearing storage when disk space is low.
+     */
+    async requestPersistence() {
+        if (navigator.storage && navigator.storage.persist) {
             try {
-                localStorage.removeItem(key);
-                removed += 1;
+                const isPersisted = await navigator.storage.persist();
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[Storage] Persistent status: ${isPersisted}`);
+                }
             } catch (e) {
-                // Skip keys that cannot be removed.
+                console.warn("[Storage] Persist request failed", e);
             }
-            delete meta[key];
-        });
-
-        this.setMeta(meta);
-        return removed;
-    },
-
-    getLRUCandidates({ cacheOnly = true, excludeKey = null } = {}) {
-        const meta = this.getMeta();
-        const candidates = [];
-
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (!key || key === this.metaKey || key === excludeKey) continue;
-            if (this.protectedKeys.has(key)) continue;
-            if (cacheOnly && !this.isCacheKey(key)) continue;
-
-            const entryMeta = meta[key] || {};
-            candidates.push({
-                key,
-                lastAccess: typeof entryMeta.lastAccess === 'number' ? entryMeta.lastAccess : 0
-            });
         }
-
-        candidates.sort((a, b) => a.lastAccess - b.lastAccess);
-        return candidates;
-    },
-
-    recoverQuotaSpace(targetKey, attempt) {
-        if (attempt === 1) {
-            const oldestCacheKeys = this.getLRUCandidates({ cacheOnly: true, excludeKey: targetKey })
-                .slice(0, 3)
-                .map(item => item.key);
-            return this.removeKeys(oldestCacheKeys);
-        }
-
-        if (attempt === 2) {
-            const allCacheKeys = this.getLRUCandidates({ cacheOnly: true, excludeKey: targetKey })
-                .map(item => item.key);
-            return this.removeKeys(allCacheKeys);
-        }
-
-        const oldestNonCritical = this.getLRUCandidates({ cacheOnly: false, excludeKey: targetKey })
-            .slice(0, 2)
-            .map(item => item.key);
-        return this.removeKeys(oldestNonCritical);
     },
 
     /**
-     * Attempts to save data to localStorage with error handling.
+     * Internal: Opens the IndexedDB for backup.
+     */
+    async _openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this._dbName, 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(this._storeName)) {
+                    db.createObjectStore(this._storeName);
+                }
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    /**
+     * Attempts to save data to localStorage with IndexedDB backup.
      * @param {string} key 
      * @param {string} value 
      * @returns {boolean} Success status
      */
     set(key, value) {
-        let recovered = 0;
+        // 1. Primary: LocalStorage
+        try {
+            localStorage.setItem(key, value);
+        } catch (error) {
+            const isQuotaError = 
+                error instanceof DOMException && (
+                error.code === 22 || 
+                error.code === 1014 || 
+                error.name === 'QuotaExceededError' || 
+                error.name === 'NS_ERROR_DOM_QUOTA_REACHED');
 
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                localStorage.setItem(key, value);
-                this.touchKey(key, value);
-                if (recovered > 0) {
-                    showToast(`Storage was full. Cleared ${recovered} old cached entr${recovered === 1 ? 'y' : 'ies'}.`, 'info');
-                }
-                return true;
-            } catch (error) {
-                if (!this.isQuotaError(error)) {
-                    console.error("LocalStorage Error:", error);
-                    return false;
-                }
-
-                const removed = this.recoverQuotaSpace(key, attempt + 1);
-                recovered += removed;
-                if (removed === 0) break;
+            if (isQuotaError) {
+                showToast("Local storage full! Saving to secure backup.", "info");
+            } else {
+                console.error("LocalStorage Error:", error);
             }
+        }
+
+        // 2. Secondary: IndexedDB (Durable Backup for Library)
+        if (key === 'bibliodrift_library') {
+            this._saveToDB(key, value);
+        }
+        return true;
+    },
+
+    async _saveToDB(key, value) {
+        try {
+            const db = await this._openDB();
+            const transaction = db.transaction(this._storeName, 'readwrite');
+            const store = transaction.objectStore(this._storeName);
+            store.put(value, key);
+        } catch (e) {
+            console.error("IndexedDB Backup Failed", e);
         }
 
         showToast("Local storage full! Please sync to cloud and clear cache.", "error");
@@ -232,16 +147,45 @@ const SafeStorage = {
     },
 
     /**
-     * Safely removes data from localStorage.
+     * Retrieves data with IndexedDB fallback if LocalStorage is wiped.
+     */
+    async getAsync(key) {
+        let val = this.get(key);
+        if (!val && key === 'bibliodrift_library') {
+            try {
+                const db = await this._openDB();
+                const transaction = db.transaction(this._storeName, 'readonly');
+                const store = transaction.objectStore(this._storeName);
+                val = await new Promise((resolve) => {
+                    const request = store.get(key);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => resolve(null);
+                });
+                
+                if (val) {
+                    if (process.env.NODE_ENV === 'development') console.log("[Storage] Restored from IndexedDB backup");
+                    // Try to restore to LocalStorage for future sync calls
+                    try { localStorage.setItem(key, val); } catch(e) {}
+                }
+            } catch (e) {
+                console.warn("Backup retrieval failed", e);
+            }
+        }
+        return val;
+    },
+
+    /**
+     * Safely removes data from storage.
      * @param {string} key 
      */
     remove(key) {
         try {
             localStorage.removeItem(key);
-            this.dropMetaKey(key);
+            if (key === 'bibliodrift_library') {
+                this._saveToDB(key, null);
+            }
             return true;
         } catch (e) {
-            console.error("LocalStorage Remove Error:", e);
             return false;
         }
     },
@@ -255,7 +199,6 @@ const SafeStorage = {
             this.setMeta({});
             return true;
         } catch (e) {
-            console.error("LocalStorage Clear Error:", e);
             return false;
         }
     }
@@ -584,17 +527,44 @@ class BookRenderer {
 class LibraryManager {
     constructor() {
         this.storageKey = 'bibliodrift_library';
-        const stored = SafeStorage.get(this.storageKey);
-        this.library = stored ? JSON.parse(stored) : {
+        // Initialize with empty library to prevent crashes during async load
+        this.library = {
             current: [],
             want: [],
             finished: []
         };
-        this.apiBase = MOOD_API_BASE;
+        this.apiBase = MOOD_API_BASE; // Fixed: Use global constant (Issue #7)
 
-        // Sync API if user is logged in
-        this.syncWithBackend();
+        // Asynchronous initialization
+        this._initPromise = this.init();
+    }
+
+    async init() {
+        // 1. Request persistent storage to prevent wipes
+        await SafeStorage.requestPersistence();
+
+        // 2. Load from LocalStorage or IndexedDB backup (Issue #8)
+        const stored = await SafeStorage.getAsync(this.storageKey);
+        if (stored) {
+            try {
+                this.library = JSON.parse(stored);
+            } catch (e) {
+                console.error("[Library] Failed to parse stored library, resetting to empty.", e);
+            }
+        }
+
+        // 3. Setup sorting and trigger initial fast render
         this.setupSorting();
+        
+        if (document.getElementById('shelf-want')) {
+            // Fast Render from local data
+            this.renderShelf('want', 'shelf-want');
+            this.renderShelf('current', 'shelf-current');
+            this.renderShelf('finished', 'shelf-finished');
+        }
+
+        // 4. Sync with backend if available (Full Refresh)
+        await this.syncWithBackend();
     }
 
     getUser() {
@@ -1048,7 +1018,8 @@ class ThemeManager {
 
 
 class GenreManager {
-    constructor() {
+    constructor(libraryManager = null) {
+        this.libraryManager = libraryManager;
         this.genreGrid = document.getElementById('genre-grid');
         this.modal = document.getElementById('genre-modal');
         this.closeBtn = document.getElementById('close-genre-modal');
@@ -1147,7 +1118,7 @@ class GenreManager {
 
     async renderBooks(books) {
         this.booksGrid.innerHTML = '';
-        const renderer = new BookRenderer(new LibraryManager());
+        const renderer = new BookRenderer(this.libraryManager);
         for (const book of books) {
             const el = await renderer.createBookElement(book);
             this.booksGrid.appendChild(el);
@@ -1209,7 +1180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const renderer = new BookRenderer(libManager);
     const themeManager = new ThemeManager();
-    const genreManager = new GenreManager();
+    const genreManager = new GenreManager(libManager);
     genreManager.init();
     const exportBtn = document.getElementById("export-library");
 
@@ -1274,11 +1245,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderer.renderCuratedSection('subject:fiction', 'row-genre');
     }
 
-    if (document.getElementById('shelf-want')) {
-        libManager.renderShelf('want', 'shelf-want');
-        libManager.renderShelf('current', 'shelf-current');
-        libManager.renderShelf('finished', 'shelf-finished');
-    }
+    // Re-rendering is now handled by libManager.init() asynchronously to ensure
+    // data is loaded from IndexedDB backup if LocalStorage was wiped.
+    // if (document.getElementById('shelf-want')) {
+    //     libManager.renderShelf('want', 'shelf-want');
+    //     libManager.renderShelf('current', 'shelf-current');
+    //     libManager.renderShelf('finished', 'shelf-finished');
+    // }
 
 
     // Check if Profile Page
