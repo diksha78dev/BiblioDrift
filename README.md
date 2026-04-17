@@ -33,40 +33,74 @@ BiblioDrift is a cozy, visual-first book discovery platform designed to make fin
 ## 🤖 Project Structure 
 ```
 BIBLIODRIFT/
-├── __pycache__/          # Python cache files
-├── assets/               # Images, icons, and static UI assets
-├── instance/             # App instance / runtime files
-├── mood_analysis/        # Mood & emotion analysis logic
-├── purchase_links/       # Book purchase / external links logic
-├── script/               # Utility or helper scripts
-├── venv/                 # Python virtual environment
+BIBLIODRIFT/
 │
-├── .env.example          # Environment variables template
+├── backend/                     #  Python backend logic
+│   ├── app.py
+│   ├── ai_service.py
+│   ├── cache_service.py
+│   ├── config.py
+│   ├── error_responses.py
+│   ├── models.py
+│   ├── security_utils.py
+│   ├── validators.py
+│   │
+│   ├── mood_analysis/          # mood-based recommendation logic
+│   └── purchase_links/         # purchase link generation
+|   ├── price_tracker/   
+│
+├── frontend/                   #  UI (client-side)
+│   ├── pages/                  # HTML files
+│   │   ├── index.html
+│   │   ├── auth.html
+│   │   ├── chat.html
+│   │   ├── library.html
+│   │   ├── profile.html
+│   │   └── 404.html
+│   │
+│   ├── js/                     # JavaScript
+│   │   ├── app.js
+│   │   ├── chat.js
+│   │   ├── config.js
+│   │   ├── footer.js
+│   │   └── library-3d.js
+│   │
+│   ├── css/                    # Styles
+│   │   ├── style.css
+│   │   ├── style_main.css
+│   │   └── style-responsive.css
+│   │
+│   ├── assets/                 # Images, sounds
+│   │   ├── images/
+│   │   └── sounds/
+│   │
+│   └── script/                 # extra JS (header scroll etc.)
+│
+├── config/                     # ⚙️ Configuration
+│   ├── .env.development
+│   ├── .env.example
+│   ├── .env.testing
+│   ├── requirements.txt
+│   └── runtime.txt
+│
+├── docs/                       # 📚 Documentation
+│   ├── contributing.md
+│   ├── Open-Source-Event-Guidelines.md
+│   ├── TUTORIAL.md
+│   └── page.png
+│
+├── tests/                      # 🧪 Test files
+│   ├── test_api.py
+│   ├── test_llm.py
+│   └── test_validation.py
+│
 ├── .gitignore
-│
-├── ai_service.py         # AI-powered recommendation / analysis service
-├── app.py                # Main backend application entry point
-├── models.py             # Database / data models
-├── requirements.txt      # Python dependencies
-│
-├── app.js                # Frontend JavaScript logic
-├── chat.js               # Chat interaction logic
-├── library-3d.js         # 3D library visualization logic
-│
-├── index.html            # Landing / discovery page
-├── auth.html             # Authentication (Sign In / Sign Up)
-├── chat.html             # Chat interface
-├── library.html          # User’s virtual library page
-│
-├── style.css             # Main stylesheet
-├── style-original.backup # Backup of original styles
-│
-├── CONTRIBUTING.md       # Contribution guidelines
+├── README.md
 ├── LICENSE
-├── README.md             # Project documentation
-├── CONTRIBUTING.md       # Contribution guide and setup notes
-├── PROJECT_DETAILS.md    # Contributor-facing project guide
-└── page.png              # Preview / UI reference image
+├── netlify/                    # deployment config
+├── script/ (if any left)       
+├── venv/                       
+└── .vscode/
 ```
 ## 🤖 AI Recommendation Policy
 
@@ -94,6 +128,12 @@ This ensures discovery stays organic, scalable, and aligned with BiblioDrift’s
 
 ### Backend (Future)
 Planned implementation using Python Flask.
+
+## 🚢 Deployment Notes
+
+- Netlify should serve the static frontend from the generated `dist/` bundle.
+- The Flask backend, database, Redis, and AI services are not hosted by Netlify.
+- To make the API work in production, deploy the backend separately and point the frontend `MOOD_API_BASE` to that host.
 
 ##  Screenshots
 
