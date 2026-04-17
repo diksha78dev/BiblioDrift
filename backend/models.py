@@ -53,9 +53,13 @@ class ShelfItem(db.Model):
     rating = db.Column(db.Integer)
     finished_at = db.Column(db.DateTime, nullable=True)  # Timestamp when book was marked as finished
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # Price tracking fields
     price_alert = db.Column(db.Boolean, default=False)  # Enable/disable price alerts
     target_price = db.Column(db.Float, nullable=True)  # User's target price for alerts
+
+    # Versioning for optimistic locking
+    version = db.Column(db.Integer, default=1, nullable=False)
 
     # Relationships
     user = db.relationship('User', backref=db.backref('shelf_items', lazy=True))
@@ -75,8 +79,10 @@ class ShelfItem(db.Model):
             "rating": self.rating,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "price_alert": self.price_alert,
-            "target_price": self.target_price
+            "target_price": self.target_price,
+            "version": self.version
         }
 
 class BookNote(db.Model):
