@@ -135,6 +135,9 @@ const SafeStorage = {
         } catch (e) {
             console.error("IndexedDB Backup Failed", e);
         }
+
+        showToast("Local storage full! Please sync to cloud and clear cache.", "error");
+        return false;
     },
 
     /**
@@ -142,7 +145,11 @@ const SafeStorage = {
      */
     get(key) {
         try {
-            return localStorage.getItem(key);
+            const value = localStorage.getItem(key);
+            if (value !== null) {
+                this.touchKey(key, value);
+            }
+            return value;
         } catch (e) {
             return null;
         }
@@ -198,6 +205,7 @@ const SafeStorage = {
     clear() {
         try {
             localStorage.clear();
+            this.setMeta({});
             return true;
         } catch (e) {
             return false;
@@ -1398,10 +1406,10 @@ async function handleAuth(event) {
 
     if (mode === 'register') {
         const username = usernameInput ? usernameInput.value : email.split('@')[0];
-        endpoint = '/api/v1/register';
+        endpoint = '/register';
         payload = { username, email, password };
     } else {
-        endpoint = '/api/v1/login';
+        endpoint = '/login';
         payload = { username: email, password: password };
     }
 
