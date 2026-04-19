@@ -1043,7 +1043,10 @@ def logout():
 @jwt_required()
 def set_reading_goal():
     """Set or update annual reading goal."""
-    data = request.json
+    # Use get_json(silent=True) to avoid automatic 400 on malformed JSON
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
     current_user_id = get_jwt_identity()
     
     # Validate request
@@ -1185,7 +1188,10 @@ def get_leaderboard():
 @jwt_required()
 def create_collection():
     """Create a new collection."""
-    data = request.json
+    # Use get_json(silent=True) to avoid automatic 400 on malformed JSON
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
     current_user_id = get_jwt_identity()
     
     # Validate request
@@ -1271,7 +1277,10 @@ def get_collection(collection_id):
 @jwt_required()
 def update_collection(collection_id):
     """Update a collection."""
-    data = request.json
+    # Use get_json(silent=True) to avoid automatic 400 on malformed JSON
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
     current_user_id = get_jwt_identity()
     
     # Validate request
@@ -1343,7 +1352,10 @@ def delete_collection(collection_id):
 @jwt_required()
 def add_book_to_collection(collection_id):
     """Add a book to a collection."""
-    data = request.json
+    # Use get_json(silent=True) to avoid automatic 400 on malformed JSON
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
     current_user_id = get_jwt_identity()
     
     # Validate request
