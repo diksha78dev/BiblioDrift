@@ -1374,6 +1374,28 @@ class GenreManager {
 
     async renderBooks(books) {
         this.booksGrid.innerHTML = '';
+
+        /**
+         * ==============================================================================
+         * ISSUE FIX: REDUNDANT LIBRARYMANAGER INSTANTIATION
+         * ==============================================================================
+         * 
+         * Background Context & Issue:
+         * ---------------------------
+         * Previously, a new `LibraryManager` was instantiated every time `renderBooks` 
+         * was called inside `GenreManager`. 
+         * 
+         * The problem was that creating a new `LibraryManager` triggers a fresh 
+         * `syncWithBackend()` network call upon initialization. Calling this repeatedly 
+         * every time the genre modal books are rendered wastes bandwidth and can 
+         * potentially overwrite or corrupt an in-progress synchronization state.
+         * 
+         * The Resolution:
+         * ---------------
+         * We now pass the existing globally shared `libManager` instance into 
+         * `GenreManager` at construction time and reuse it here via `this.libraryManager`.
+         * ==============================================================================
+         */
         const renderer = new BookRenderer(this.libraryManager);
         for (const book of books) {
             const el = await renderer.createBookElement(book);
