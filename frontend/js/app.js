@@ -302,7 +302,7 @@ const MOCK_BOOKS = [
             title: "Dune",
             authors: ["Frank Herbert"],
             description: "A sweeping science fiction epic set on the desert planet Arrakis. Dune explores complex themes of politics, religion, and man's relationship with nature. Paul Atreides must navigate a treacherous path to becoming the mysterious Muad'Dib.",
-            imageLinks: { thumbnail: "assets/images/dune.jpg" }
+            imageLinks: { thumbnail: "../assets/images/dune.jpg" }
         }
     },
     {
@@ -311,7 +311,7 @@ const MOCK_BOOKS = [
             title: "1984",
             authors: ["George Orwell"],
             description: "Orwell's chilling prophecy of a totalitarian future where Big Brother is always watching. A profound exploration of surveillance, truth, and the resilience of the human spirit.",
-            imageLinks: { thumbnail: "assets/images/1984.jpg" }
+            imageLinks: { thumbnail: "../assets/images/1984.jpg" }
         }
     },
     {
@@ -320,7 +320,7 @@ const MOCK_BOOKS = [
             title: "The Hobbit",
             authors: ["J.R.R. Tolkien"],
             description: "In a hole in the ground there lived a hobbit. Join Bilbo Baggins on an unexpected journey across Middle-earth, encountering dragons, dwarves, and a rigorous test of courage.",
-            imageLinks: { thumbnail: "assets/images/hobbit.jpg" }
+            imageLinks: { thumbnail: "../assets/images/hobbit.jpg" }
         }
     },
     {
@@ -329,7 +329,7 @@ const MOCK_BOOKS = [
             title: "Pride and Prejudice",
             authors: ["Jane Austen"],
             description: "A timeless romance of manners and misunderstanding. Elizabeth Bennet's wit matches Mr. Darcy's pride in this sharp social commentary that remains one of the most loved novels in English literature.",
-            imageLinks: { thumbnail: "assets/images/pride.jpg" }
+            imageLinks: { thumbnail: "../assets/images/pride.jpg" }
         }
     },
     {
@@ -338,7 +338,7 @@ const MOCK_BOOKS = [
             title: "The Great Gatsby",
             authors: ["F. Scott Fitzgerald"],
             description: "The quintessential novel of the Jazz Age. Jay Gatsby's obsessive love for Daisy Buchanan drives a tragic tale of wealth, illusion, and the American Dream.",
-            imageLinks: { thumbnail: "assets/images/gatsby.jpg" }
+            imageLinks: { thumbnail: "../assets/images/gatsby.jpg" }
         }
     },
     {
@@ -347,7 +347,7 @@ const MOCK_BOOKS = [
             title: "Sapiens",
             authors: ["Yuval Noah Harari"],
             description: "A groundbreaking narrative of humanity's creation and evolution. Harari explores the ways in which biology and history have defined us and enhanced our understanding of what it means to be 'human'.",
-            imageLinks: { thumbnail: "assets/images/sapiens.jpg" }
+            imageLinks: { thumbnail: "../assets/images/sapiens.jpg" }
         }
     },
     {
@@ -356,7 +356,7 @@ const MOCK_BOOKS = [
             title: "Project Hail Mary",
             authors: ["Andy Weir"],
             description: "A lone astronaut must save the earth from disaster in this gripping tale of survival and scientific discovery. Full of humor and hard science, it is a celebration of human ingenuity.",
-            imageLinks: { thumbnail: "assets/images/hail_mary.jpg" }
+            imageLinks: { thumbnail: "../assets/images/hail_mary.jpg" }
         }
     }
 ];
@@ -416,7 +416,7 @@ class BookRenderer {
         scene.className = 'book-scene';
 
         // Load flip sound
-        const flipSound = new Audio('assets/sounds/page-flip.mp3');
+        const flipSound = new Audio('../assets/sounds/page-flip.mp3');
         flipSound.volume = 0.5;
 
         /**
@@ -482,6 +482,7 @@ class BookRenderer {
                         <button class="btn-icon add-btn" title="Add to Library"><i class="fa-regular fa-heart"></i></button>
                         <button class="btn-icon info-btn" title="Read Details"><i class="fa-solid fa-info"></i></button>
                         <button class="btn-icon share-btn" title="Share Book"><i class="fa-solid fa-share-nodes"></i></button>
+                        <button class="btn-icon" title="Flip Back" onclick="event.stopPropagation(); this.closest('.book').classList.remove('flipped'); const s = new Audio('../assets/sounds/page-flip.mp3'); s.volume=0.5; s.play();"><i class="fa-solid fa-rotate-left"></i></button>
                         <button class="btn-icon flip-back-btn" title="Flip Back"><i class="fa-solid fa-rotate-left"></i></button>
                     </div>
                 </div>
@@ -1777,7 +1778,7 @@ function enableTapEffects() {
 enableTapEffects();
 
 // --- creak and page flip effects ---
-const pageFlipSound = new Audio('assets/sounds/page-flip.mp3');
+const pageFlipSound = new Audio('../assets/sounds/page-flip.mp3');
 pageFlipSound.volume = 0.2;
 pageFlipSound.muted = true;
 
