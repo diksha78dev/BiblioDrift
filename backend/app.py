@@ -27,6 +27,7 @@ from price_tracker import get_price_tracker
 from cache_service import cache_service
 from validators import (
     validate_request,
+    validate_google_books_id,
     AnalyzeMoodRequest,
     MoodTagsRequest,
     MoodSearchRequest,
@@ -931,6 +932,27 @@ def sync_library():
         
         if str(user_id) != str(current_user_id):
             return forbidden_error("Cannot sync to another user's library")
+
+        invalid_ids = []
+        for index, item_data in enumerate(raw_items):
+            if not isinstance(item_data, dict):
+                continue
+            raw_google_id = item_data.get('id')
+            if raw_google_id is None or not validate_google_books_id(str(raw_google_id).strip()):
+                invalid_ids.append((index, raw_google_id))
+
+        if invalid_ids:
+            for index, bad_value in invalid_ids:
+                logger.warning(
+                    "Rejected sync payload with invalid Google Books ID. user_id=%s item_index=%s id=%r",
+                    user_id,
+                    index,
+                    bad_value
+                )
+            return validation_error("Invalid Google Books ID format in sync payload")
+
+        # Sanitize the items list only after validating Google Books IDs.
+        items = sanitize_payload(raw_items)
         
         synced_count = 0
         conflicts = 0
@@ -1571,6 +1593,8 @@ def get_book_reviews(book_id):
         if book_id.isdigit():
             book = Book.query.get(int(book_id))
         else:
+            if not validate_google_books_id(book_id):
+                return validation_error("Invalid Google Books ID format")
             book = Book.query.filter_by(google_books_id=book_id).first()
         
         if not book:
@@ -1654,6 +1678,8 @@ def create_price_alert(book_id):
         if book_id.isdigit():
             book = Book.query.get(int(book_id))
         else:
+            if not validate_google_books_id(book_id):
+                return validation_error("Invalid Google Books ID format")
             book = Book.query.filter_by(google_books_id=book_id).first()
         
         if not book:
