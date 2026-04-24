@@ -147,9 +147,9 @@ def add_security_headers(response):
     # - default-src 'self': Only allow resources from the same origin
     # - script-src 'self' https://cdn.jsdelivr.net: Allow scripts from self and DOMPurify CDN
     # - style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com: Allow styles from self and CDN
-    # - img-src 'self' data: https:: Allow images from self, data URLs, and HTTPS
+    # - img-src 'self' data: blob: https:: Allow images from self, data URLs, blob URLs, and HTTPS
     # - font-src 'self' https://fonts.gstatic.com: Allow fonts from self and Google Fonts
-    # - connect-src 'self' ws: wss:: Allow connections to own origin and WebSocket
+    # - connect-src 'self' ws: wss: https:: Allow connections to own origin, secure WebSocket, and HTTPS
     # - frame-ancestors 'none': Prevent framing/clickjacking
     # - base-uri 'self': Restrict base tag to same origin
     # - form-action 'self': Restrict form submissions to same origin
@@ -158,9 +158,9 @@ def add_security_headers(response):
         "default-src 'self'; "
         "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
         "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
-        "img-src 'self' data: https: http:; "
+        "img-src 'self' data: blob: https:; "
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-        "connect-src 'self' ws: wss: http: https:; "
+        "connect-src 'self' ws: wss: https:; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'; "
