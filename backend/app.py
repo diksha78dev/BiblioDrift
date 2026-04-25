@@ -68,19 +68,13 @@ from error_responses import (
     internal_error, service_unavailable_error
 )
 
-# Setup logging from configuration
+# =====================================================================
+# LOGGING INITIALIZATION
+# We rely solely on the centralized setup_logging function to configure 
+# the root logger. Calling logging.basicConfig here is redundant and 
+# creates duplicate handlers since setup_logging already handles it.
+# =====================================================================
 logger = setup_logging(app_config)
-
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('bibliodrift.log') if os.getenv('LOG_FILE') else logging.NullHandler()
-    ]
-)
-
 logger = logging.getLogger(__name__)
 
 # Try to import enhanced mood analysis
