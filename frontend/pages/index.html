@@ -105,6 +105,14 @@
       <div class="curated-row" id="row-classics"></div>
     </section>
 
+    <section class="curated-section">
+      <div class="section-header">
+        <h2>General Fiction</h2>
+        <span><i class="fa-solid fa-book-open"></i> Stories for everyone</span>
+      </div>
+      <div class="curated-row" id="row-fiction"></div>
+    </section>
+
     <!-- Genre Grid Section -->
     <section class="curated-section genre-section">
       <div class="section-header">
@@ -229,7 +237,40 @@
     });
   </script>
 
-  <!-- Security: Frontend security utilities -->
+  <!-- Back to Top Button -->
+  <button id="backToTop" class="btn-icon back-to-top" title="Back to Top" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">
+    <i class="fa-solid fa-arrow-up"></i>
+  </button>
+
+  <!-- Ambient Sanctuary UI -->
+  <div class="ambient-sanctuary">
+    <button id="ambientToggle" title="Ambient Sanctuary">
+      <i class="fa-solid fa-leaf"></i>
+    </button>
+    <div id="ambientPanel" class="ambient-panel">
+      <h3 style="color: var(--text-main) !important;">Ambient Sanctuary</h3>
+      <div class="ambient-option">
+        <span style="color: var(--text-main) !important;"><i class="fa-solid fa-cloud-rain"></i> Rainy Evening</span>
+        <label class="switch">
+          <input type="checkbox" id="rainToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="ambient-option">
+        <span style="color: var(--text-main) !important;"><i class="fa-solid fa-fire"></i> Cozy Fireplace</span>
+        <label class="switch">
+          <input type="checkbox" id="fireToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="volume-control">
+        <label for="ambientVolume" style="color: var(--text-main) !important;"><i class="fa-solid fa-volume-high"></i> Volume</label>
+        <input type="range" id="ambientVolume" min="0" max="1" step="0.1" value="0.5" style="width: 100%;">
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/ambient.js"></script>
   <script src="../js/security.js"></script>
 </body>
 

@@ -197,6 +197,12 @@
         .typing-indicator .message-avatar {
             background: linear-gradient(135deg, #b8860b, #8b4513);
         }
+        /* Override global ambient panel position for chat header */
+        .chat-actions .ambient-panel {
+            top: 100%;
+            bottom: auto;
+            margin-top: 10px;
+        }
     </style>
     <link rel="icon" href="../assets/images/biblioDrift_favicon.png" type="image/png">
 </head>
@@ -253,6 +259,32 @@
                     </div>
                 </div>
                 <div class="chat-actions">
+                    <div class="ambient-controls" id="ambientControls">
+                        <button class="action-btn" id="ambientToggle" title="Atmosphere (Rain/Fire)">
+                            <i class="fa-solid fa-cloud-showers-heavy"></i>
+                        </button>
+                        <div class="ambient-panel" id="ambientPanel">
+                            <h3>Ambient Sanctuary</h3>
+                            <div class="ambient-option">
+                                <span><i class="fa-solid fa-cloud-rain"></i> Rain</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="rainToggle">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="ambient-option">
+                                <span><i class="fa-solid fa-fire"></i> Fireplace</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="fireToggle">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="volume-control">
+                                <label for="ambientVolume"><i class="fa-solid fa-volume-high"></i> Volume</label>
+                                <input type="range" id="ambientVolume" min="0" max="1" step="0.1" value="0.5">
+                            </div>
+                        </div>
+                    </div>
                     <button class="action-btn" onclick="clearChat()" title="Clear conversation">
                         <i class="fa-solid fa-trash"></i>
                     </button>
@@ -349,6 +381,7 @@
         });
     </script>
     <script src="../js/config.js"></script>
+    <script src="../js/ambient.js"></script>
     <script src="../js/chat.js"></script>
     <script src="../js/app.js"></script>
     <script src="../js/footer.js"></script>

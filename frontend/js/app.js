@@ -188,12 +188,12 @@ const SafeStorage = {
         try {
             localStorage.setItem(key, value);
         } catch (error) {
-            const isQuotaError = 
+            const isQuotaError =
                 error instanceof DOMException && (
-                error.code === 22 || 
-                error.code === 1014 || 
-                error.name === 'QuotaExceededError' || 
-                error.name === 'NS_ERROR_DOM_QUOTA_REACHED');
+                    error.code === 22 ||
+                    error.code === 1014 ||
+                    error.name === 'QuotaExceededError' ||
+                    error.name === 'NS_ERROR_DOM_QUOTA_REACHED');
 
             if (isQuotaError) {
                 showToast("Local storage full! Saving to secure backup.", "info");
@@ -253,11 +253,11 @@ const SafeStorage = {
                     request.onsuccess = () => resolve(request.result);
                     request.onerror = () => resolve(null);
                 });
-                
+
                 if (val) {
                     if (IS_DEV) console.log("[Storage] Restored from IndexedDB backup");
                     // Try to restore to LocalStorage for future sync calls
-                    try { localStorage.setItem(key, val); } catch(e) {}
+                    try { localStorage.setItem(key, val); } catch (e) { }
                 }
             } catch (e) {
                 console.warn("Backup retrieval failed", e);
@@ -569,16 +569,16 @@ class BookRenderer {
 
         // Async fetch AI Vibe - Hydrate the UI
         this.fetchAIVibe(title, authors, volumeInfo.description || "").then(aiVibe => {
-             if (aiVibe) {
-                 // Strip any accidental prefix the AI might return
-                 const cleanVibe = aiVibe.replace(/^(Bookseller's Note:|Note:|Recommendation:)\s*/i, "");
-                 
-                 const noteEl = scene.querySelector('.handwritten-note');
-                 if (noteEl) {
+            if (aiVibe) {
+                // Strip any accidental prefix the AI might return
+                const cleanVibe = aiVibe.replace(/^(Bookseller's Note:|Note:|Recommendation:)\s*/i, "");
+
+                const noteEl = scene.querySelector('.handwritten-note');
+                if (noteEl) {
                     noteEl.innerHTML = cleanVibe;
                     noteEl.classList.add('fade-in'); // Optional animation hook
-                 }
-             }
+                }
+            }
         });
 
         return scene;
@@ -615,24 +615,24 @@ class BookRenderer {
         if (lowerCats.includes('fiction') || lowerText.includes('novel')) return "A compelling narrative voice.";
         if (lowerCats.includes('history') || lowerText.includes('war')) return "A journey into the past.";
         if (lowerCats.includes('science') || lowerText.includes('space')) return "Opens your mind to new possibilities.";
-        
+
         // 2. Generic fallbacks (Deterministic hash)
         const vibes = [
-            "Perfect for a rainy afternoon.", 
-            "A quiet companion for coffee.", 
+            "Perfect for a rainy afternoon.",
+            "A quiet companion for coffee.",
             "Intense and thought-provoking.",
             "Will make you laugh and cry.",
             "Best devoured in one sitting.",
             "Prepare to be surprised."
         ];
-        
+
         // Simple hash to pick a stable vibe for this book text
         let hash = 0;
         for (let i = 0; i < text.length; i++) {
             hash = ((hash << 5) - hash) + text.charCodeAt(i);
             hash |= 0; // Convert to 32bit integer
         }
-        
+
         return vibes[Math.abs(hash) % vibes.length];
     }
 
@@ -739,9 +739,26 @@ class BookRenderer {
 
     async renderBookCards(container, books) {
         container.innerHTML = '';
+        if (!books || books.length === 0) {
+            container.innerHTML = '<p class="empty-state">No books available for this collection.</p>';
+            return;
+        }
+
         for (const book of books) {
-            const bookElement = await this.createBookElement(book);
-            container.appendChild(bookElement);
+            try {
+                const bookElement = await this.createBookElement(book);
+                if (bookElement) {
+                    container.appendChild(bookElement);
+                }
+            } catch (err) {
+                console.error("Failed to render individual book:", book.id, err);
+                // Continue to next book instead of breaking the row
+            }
+        }
+
+        // If nothing was rendered, show error
+        if (container.children.length === 0) {
+            container.innerHTML = '<p class="empty-state">Failed to load books. Please check your connection.</p>';
         }
     }
 }
@@ -808,7 +825,7 @@ class LibraryManager {
 
         // 3. Setup sorting and trigger initial fast render
         this.setupSorting();
-        
+
         if (document.getElementById('shelf-want')) {
             // Fast Render from local data
             this.renderShelf('want', 'shelf-want');
@@ -879,7 +896,7 @@ class LibraryManager {
 
                     if (existing) {
                         const localBook = existing.book;
-                        
+
                         // Conflict Resolution Logic:
                         // If backend has a higher version, it wins.
                         if (item.version > (localBook.version || 0)) {
@@ -977,7 +994,7 @@ class LibraryManager {
                 if (IS_DEV) {
                     console.log("Sync result:", data);
                 }
-                
+
                 if (data.conflicts > 0) {
                     showToast(`Synced ${data.message} (${data.conflicts} conflicts resolved by server)`, "info");
                 } else {
@@ -1108,7 +1125,7 @@ class LibraryManager {
 
         // 1. Update Local State
         Object.assign(book, updates);
-        
+
         // Local "Finished" logic
         if (updates.progress === 100 && shelf !== 'finished') {
             // Remove from current, add to finished
@@ -1116,7 +1133,7 @@ class LibraryManager {
             this.library.finished.push(book);
             showToast(`Congrats! You finished ${book.volumeInfo.title}!`, "success");
         }
-        
+
         this.saveLocally();
 
         // 2. Update Backend
@@ -1194,8 +1211,8 @@ class LibraryManager {
             // Do we have it?
             if (user && book.db_id) {
                 try {
-                    await fetch(`${this.apiBase}/library/${book.db_id}`, { 
-                        method: 'DELETE', 
+                    await fetch(`${this.apiBase}/library/${book.db_id}`, {
+                        method: 'DELETE',
                         headers: this.getAuthHeaders(),
                         credentials: 'include'
                     });
@@ -1406,14 +1423,37 @@ class GenreManager {
 }
 
 // Init
+// --- Application Bootstrap ---
 document.addEventListener('DOMContentLoaded', async () => {
-    // Load config first to get API keys
-    await loadConfig();
-
+    console.log('🚀 BiblioDrift Initializing...');
+    
+    // 1. Initialize Managers
     const libManager = new LibraryManager();
-    window.libManager = libManager; // Expose for Auth
+    window.libManager = libManager;
+    
+    window.renderer = new BookRenderer(libManager);
+    const themeManager = new ThemeManager();
+    
+    // 2. Load Config (Non-blocking)
+    loadConfig();
 
-    // Auth Page Logic (Toggle Login/Register)
+    // 3. Render Curated Discovery Section
+    const rows = [
+        { id: 'row-rainy', query: 'subject:mystery atmosphere' },
+        { id: 'row-indian', query: 'authors:arundhati roy|subject:india' },
+        { id: 'row-classics', query: 'subject:classic fiction' },
+        { id: 'row-fiction', query: 'subject:fiction' }
+    ];
+
+    for (const row of rows) {
+        if (document.getElementById(row.id)) {
+            window.renderer.renderCuratedSection(row.query, row.id).catch(e => {
+                console.error(`Row ${row.id} failed:`, e);
+            });
+        }
+    }
+
+    // --- AUTH LOGIC ---
     const toggleLink = document.querySelector('.toggle-link');
     const authTitle = document.querySelector('.auth-container h2');
     const authBtn = document.querySelector('.auth-btn');
@@ -1421,25 +1461,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (toggleLink && authTitle && authBtn && authForm) {
         let isLogin = true;
-        authForm.dataset.mode = 'login'; // Default
-
-        // Create Username Input for Register mode
-        const usernameInput = document.createElement('input');
-        usernameInput.type = 'text';
-        usernameInput.id = 'username';
-        usernameInput.className = 'auth-input';
-        usernameInput.placeholder = 'Username';
-        usernameInput.style.display = 'none';
-
-        // Insert before email
-        const emailInput = document.getElementById('email');
-        if (emailInput) {
-            authForm.insertBefore(usernameInput, emailInput);
-        }
-
+        authForm.dataset.mode = 'login';
+        
         toggleLink.addEventListener('click', () => {
             isLogin = !isLogin;
             authForm.dataset.mode = isLogin ? 'login' : 'register';
+            authTitle.textContent = isLogin ? 'Sign In' : 'Join BiblioDrift';
+            authBtn.textContent = isLogin ? 'Sign In' : 'Create Account';
+            toggleLink.textContent = isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In";
+        });
+    }
 
             if (isLogin) {
                 authTitle.textContent = 'Welcome Back';
@@ -1501,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('q');
-    
+
     // Fill search box if query exists
     if (query && searchInput) {
         searchInput.value = query;
@@ -1518,17 +1549,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             </section>`;
         renderer.renderCuratedSection(query, 'search-results', 20);
     } else if (document.getElementById('row-rainy')) {
+        console.log('📚 Initializing Curated Discovery Sections...');
         (async () => {
-    await renderer.renderCuratedSection('subject:mystery atmosphere', 'row-rainy');
-    await delay(1500);
-
-    await renderer.renderCuratedSection('authors:amitav ghosh|authors:arundhati roy|subject:india', 'row-indian');
-    await delay(1500);
-
-    await renderer.renderCuratedSection('subject:classic fiction', 'row-classics');
-
-    await renderer.renderCuratedSection('subject:fiction', 'row-genre');
-})();
+            try {
+                await renderer.renderCuratedSection('subject:mystery atmosphere', 'row-rainy');
+                await delay(500);
+                await renderer.renderCuratedSection('authors:arundhati roy|subject:india', 'row-indian');
+                await delay(500);
+                await renderer.renderCuratedSection('subject:classic fiction', 'row-classics');
+                await delay(500);
+                await renderer.renderCuratedSection('subject:fiction', 'row-fiction');
+                console.log('✅ Discovery shelves populated.');
+            } catch (err) {
+                console.error('❌ Critical error during shelf initialization:', err);
+            }
+        })();
     }
 
     // Re-rendering is now handled by libManager.init() asynchronously to ensure
@@ -1787,7 +1822,7 @@ document.addEventListener("click", (e) => {
     const scene = e.target.closest(".book-scene");
     if (!scene) return;
 
-        if (IS_DEV) {
+    if (IS_DEV) {
         console.log("BOOK CLICK");
     }
 
