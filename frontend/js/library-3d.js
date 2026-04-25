@@ -482,17 +482,48 @@ class BookshelfRenderer3D {
         spine.classList.add(traits.fontClass);
         if (traits.titleModifier) spine.classList.add(traits.titleModifier);
 
-        spine.innerHTML = `
-            <div class="spine-face" style="background-color: ${traits.spineColor}; color: ${traits.textColor};">
-                <span class="spine-title">${book.title}</span>
-                <span class="spine-author">${book.author ? book.author.split(' ').pop() : ''}</span>
-                ${traits.pattern.includes('ornament') ? '<div class="spine-pattern-ornament"></div>' : ''}
-                ${traits.pattern.includes('bands') ? '<div class="spine-pattern-bands"></div>' : ''}
-                ${traits.pattern.includes('frame') ? '<div class="spine-pattern-frame"></div>' : ''}
-            </div>
-            <div class="book-edge"></div>
-            <div class="book-top" style="--spine-color: ${traits.spineColor};"></div>
-        `;
+        const face = document.createElement('div');
+        face.className = 'spine-face';
+        face.style.backgroundColor = traits.spineColor;
+        face.style.color = traits.textColor;
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'spine-title';
+        titleSpan.textContent = book.title;
+        face.appendChild(titleSpan);
+
+        const authorSpan = document.createElement('span');
+        authorSpan.className = 'spine-author';
+        authorSpan.textContent = book.author ? book.author.split(' ').pop() : '';
+        face.appendChild(authorSpan);
+
+        if (traits.pattern.includes('ornament')) {
+            const ornament = document.createElement('div');
+            ornament.className = 'spine-pattern-ornament';
+            face.appendChild(ornament);
+        }
+        if (traits.pattern.includes('bands')) {
+            const bands = document.createElement('div');
+            bands.className = 'spine-pattern-bands';
+            face.appendChild(bands);
+        }
+        if (traits.pattern.includes('frame')) {
+            const frame = document.createElement('div');
+            frame.className = 'spine-pattern-frame';
+            face.appendChild(frame);
+        }
+
+        const edge = document.createElement('div');
+        edge.className = 'book-edge';
+
+        const top = document.createElement('div');
+        top.className = 'book-top';
+        top.style.setProperty('--spine-color', traits.spineColor);
+
+        spine.innerHTML = '';
+        spine.appendChild(face);
+        spine.appendChild(edge);
+        spine.appendChild(top);
 
         // Event listeners
         spine.addEventListener('mouseenter', (e) => this.showTooltip(e, book));
@@ -774,23 +805,45 @@ class BookshelfRenderer3D {
         // Categories
         const categoriesContainer = document.getElementById('modal-categories');
         if (categoriesContainer && book.categories) {
-            categoriesContainer.innerHTML = book.categories.map(cat =>
-                `<span class="category-tag">${cat}</span>`
-            ).join('');
+            categoriesContainer.innerHTML = '';
+            book.categories.forEach(cat => {
+                const span = document.createElement('span');
+                span.className = 'category-tag';
+                span.textContent = cat;
+                categoriesContainer.appendChild(span);
+            });
         }
 
         // Reviews
         const reviewsContainer = document.getElementById('modal-reviews');
         if (reviewsContainer && book.reviews) {
-            reviewsContainer.innerHTML = book.reviews.map(review => `
-                <div class="review-item">
-                    <div class="review-header">
-                        <span class="reviewer-name">${review.name}</span>
-                        <span class="review-rating">${this.getStarRating(review.rating)}</span>
-                    </div>
-                    <p class="review-text">"${review.text}"</p>
-                </div>
-            `).join('');
+            reviewsContainer.innerHTML = '';
+            book.reviews.forEach(review => {
+                const item = document.createElement('div');
+                item.className = 'review-item';
+                
+                const header = document.createElement('div');
+                header.className = 'review-header';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'reviewer-name';
+                nameSpan.textContent = review.name;
+                header.appendChild(nameSpan);
+                
+                const ratingSpan = document.createElement('span');
+                ratingSpan.className = 'review-rating';
+                ratingSpan.textContent = this.getStarRating(review.rating);
+                header.appendChild(ratingSpan);
+                
+                item.appendChild(header);
+                
+                const textP = document.createElement('p');
+                textP.className = 'review-text';
+                textP.textContent = `"${review.text}"`;
+                item.appendChild(textP);
+                
+                reviewsContainer.appendChild(item);
+            });
         }
 
         // Handle Shelf Selection
