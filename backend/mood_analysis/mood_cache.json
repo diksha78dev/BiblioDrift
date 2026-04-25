@@ -130,5 +130,71 @@
         "confidence_threshold": 0.1
       }
     }
+  },
+  "fugitive pieces|anne michaels": {
+    "success": true,
+    "overall_sentiment": {
+      "compound_score": -0.5719,
+      "compound_median": -0.5719,
+      "compound_stdev": 0,
+      "positive_score": 0.0,
+      "negative_score": 0.144,
+      "textblob_polarity": -0.0625,
+      "average_confidence": 0.67594,
+      "sentiment_consistency": 1
+    },
+    "primary_moods": [],
+    "mood_description": "This book has a predominantly negative reception.",
+    "bibliodrift_vibe": "Prepare for a storm of feelings.",
+    "analysis_confidence": 0.358,
+    "total_reviews_analyzed": 1,
+    "review_statistics": {
+      "average_length": 172,
+      "average_word_count": 23,
+      "average_rating": null,
+      "rating_distribution": {},
+      "total_helpful_votes": 0
+    },
+    "metadata": {
+      "analyzer_version": "2.0.0",
+      "analysis_timestamp": "2026-04-25T08:45:29.508613+00:00Z",
+      "config_used": {
+        "min_reviews": 3,
+        "confidence_threshold": 0.1
+      }
+    }
+  },
+  "the metamorphosis|franz kafka": {
+    "success": true,
+    "overall_sentiment": {
+      "compound_score": 0.2379,
+      "compound_median": 0.4005,
+      "compound_stdev": 0.6713916877154001,
+      "positive_score": 0.14453846153846153,
+      "negative_score": 0.07107692307692308,
+      "textblob_polarity": 0.18779848161098162,
+      "average_confidence": 0.6964421818459319,
+      "sentiment_consistency": 0.32860831228459986
+    },
+    "primary_moods": [],
+    "mood_description": "This book has a generally positive reception.",
+    "bibliodrift_vibe": "The literary equivalent of a perfect cup of tea.",
+    "analysis_confidence": 0.548,
+    "total_reviews_analyzed": 13,
+    "review_statistics": {
+      "average_length": 317.61538461538464,
+      "average_word_count": 56.92307692307692,
+      "average_rating": null,
+      "rating_distribution": {},
+      "total_helpful_votes": 0
+    },
+    "metadata": {
+      "analyzer_version": "2.0.0",
+      "analysis_timestamp": "2026-04-25T09:00:12.430694+00:00Z",
+      "config_used": {
+        "min_reviews": 3,
+        "confidence_threshold": 0.1
+      }
+    }
   }
 }
