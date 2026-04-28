@@ -435,7 +435,7 @@ def handle_mood_tags():
 @app.route('/api/v1/mood-search', methods=['POST'])
 @rate_limit('mood_search')
 def handle_mood_search():
-    """Search for books based on mood/vibe."""
+    """Search for books based on mood/vibe with improved query parsing."""
     from exceptions import (
         LLMCircuitBreakerOpenError, AIServiceException,
         ValidationException, InvalidInputError
@@ -452,13 +452,34 @@ def handle_mood_search():
         
         mood_query = validated_data.query
         
-        recommendations = get_ai_recommendations(mood_query)
-        return success_response(
-            data={
-                "recommendations": recommendations,
-                "query": mood_query
-            }
-        )
+        # Try to use enhanced mood parsing if available
+        try:
+            from mood_analysis.mood_query_parser import parse_mood_query, get_recommendation_prompt
+            parsed_query = parse_mood_query(mood_query)
+            enhanced_prompt = get_recommendation_prompt(mood_query)
+            
+            logger.info(f"Parsed mood query: {parsed_query.to_dict()}")
+            
+            # Use enhanced prompt for recommendations
+            recommendations = get_ai_recommendations(enhanced_prompt)
+            
+            return success_response(
+                data={
+                    "recommendations": recommendations,
+                    "query": mood_query,
+                    "parsed_mood": parsed_query.to_dict()
+                }
+            )
+        except ImportError:
+            # Fallback to basic recommendations if mood parser not available
+            logger.info("Mood query parser not available, using basic recommendations")
+            recommendations = get_ai_recommendations(mood_query)
+            return success_response(
+                data={
+                    "recommendations": recommendations,
+                    "query": mood_query
+                }
+            )
         
     except (LLMCircuitBreakerOpenError, AIServiceException) as e:
         logger.error(f"AI service error in handle_mood_search: {e}", exc_info=True)
