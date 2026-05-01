@@ -6,6 +6,7 @@ Run with: python -m pytest tests/test_security.py -v
 """
 import pytest
 import json
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 # Import security modules
@@ -306,6 +307,18 @@ class TestRequestArgumentValidation:
         """Test that required parameters are enforced."""
         # This would be tested with Flask request context
         pass
+
+
+class TestContentTypeValidation:
+    """Test Content-Type validation defaults and overrides."""
+
+    def test_allows_form_urlencoded_by_default(self):
+        """Default allowed types should include form submissions."""
+        with patch("backend.security_parsers.request", SimpleNamespace(content_type="application/x-www-form-urlencoded")):
+            is_valid, error = validate_content_type()
+
+        assert is_valid
+        assert error is None
 
 
 class TestHTMLContentProtection:
