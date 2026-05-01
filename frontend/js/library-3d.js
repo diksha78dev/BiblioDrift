@@ -187,69 +187,69 @@ const SAMPLE_BOOKS = {
             ]
         },
         {
-    id: 'sample-12',
-    title: 'The Alchemist',
-    author: 'Paulo Coelho',
-    cover: 'https://covers.openlibrary.org/b/id/8225261-M.jpg',
-    rating: 4.3,
-    ratingCount: 5124,
-    description: 'Santiago, a young Andalusian shepherd, dreams of discovering a worldly treasure. His journey takes him across the deserts of Egypt, teaching him about destiny, love, and listening to his heart.',
-    categories: ['Fiction', 'Adventure', 'Inspirational'],
-    spineColor: '#DAA520',
-    textColor: '#1C1C1C',
-    reviews: [
-        { name: 'DreamChaser', rating: 5, text: 'A beautiful and inspiring tale about following your dreams.' },
-        { name: 'BookWorm99', rating: 4, text: 'Simple yet powerful storytelling with deep meaning.' }
-    ]
-},
-{
-    id: 'sample-13',
-    title: 'Atomic Habits',
-    author: 'James Clear',
-    cover: 'https://covers.openlibrary.org/b/id/9251996-M.jpg',
-    rating: 4.6,
-    ratingCount: 8432,
-    description: 'A practical guide to building good habits and breaking bad ones. James Clear explains how small daily improvements compound into remarkable long-term results.',
-    categories: ['Self-Help', 'Productivity', 'Personal Development'],
-    spineColor: '#2E8B57',
-    textColor: '#FFFFFF',
-    reviews: [
-        { name: 'GrowthMindset', rating: 5, text: 'Life-changing insights on building sustainable habits.' },
-        { name: 'FocusBuilder', rating: 4, text: 'Actionable advice backed by science and real examples.' }
-    ]
-},
-{
-    id: 'sample-14',
-    title: 'Deep Work',
-    author: 'Cal Newport',
-    cover: 'https://covers.openlibrary.org/b/id/8370226-M.jpg',
-    rating: 4.5,
-    ratingCount: 6921,
-    description: 'A powerful guide to mastering focused success in a distracted world. Cal Newport explains how cultivating deep, concentrated work can dramatically improve productivity and create meaningful results in professional and personal life.',
-    categories: ['Productivity', 'Self-Improvement', 'Career Development'],
-    spineColor: '#1E3A8A',
-    textColor: '#FFFFFF',
-    reviews: [
-        { name: 'CodeMaster', rating: 5, text: 'A must-read for anyone serious about improving focus and output.' },
-        { name: 'SilentAchiever', rating: 4, text: 'Great framework for eliminating distractions and building deep concentration.' }
-    ]
-},
-{
-    id: 'sample-15',
-    title: 'The Psychology of Money',
-    author: 'Morgan Housel',
-    cover: 'https://covers.openlibrary.org/b/id/10521270-M.jpg',
-    rating: 4.7,
-    ratingCount: 11234,
-    description: 'An insightful exploration of how people think about money and the behaviors that influence financial decisions. Morgan Housel shares timeless lessons on wealth, greed, and happiness through engaging real-world stories.',
-    categories: ['Finance', 'Self-Development', 'Investing'],
-    spineColor: '#8B4513',
-    textColor: '#FFFFFF',
-    reviews: [
-        { name: 'SmartInvestor', rating: 5, text: 'A refreshing perspective on wealth and financial behavior.' },
-        { name: 'WealthBuilder', rating: 4, text: 'Simple yet powerful lessons that change how you view money.' }
-    ]
-}
+            id: 'sample-12',
+            title: 'The Alchemist',
+            author: 'Paulo Coelho',
+            cover: 'https://covers.openlibrary.org/b/id/8225261-M.jpg',
+            rating: 4.3,
+            ratingCount: 5124,
+            description: 'Santiago, a young Andalusian shepherd, dreams of discovering a worldly treasure. His journey takes him across the deserts of Egypt, teaching him about destiny, love, and listening to his heart.',
+            categories: ['Fiction', 'Adventure', 'Inspirational'],
+            spineColor: '#DAA520',
+            textColor: '#1C1C1C',
+            reviews: [
+                { name: 'DreamChaser', rating: 5, text: 'A beautiful and inspiring tale about following your dreams.' },
+                { name: 'BookWorm99', rating: 4, text: 'Simple yet powerful storytelling with deep meaning.' }
+            ]
+        },
+        {
+            id: 'sample-13',
+            title: 'Atomic Habits',
+            author: 'James Clear',
+            cover: 'https://covers.openlibrary.org/b/id/9251996-M.jpg',
+            rating: 4.6,
+            ratingCount: 8432,
+            description: 'A practical guide to building good habits and breaking bad ones. James Clear explains how small daily improvements compound into remarkable long-term results.',
+            categories: ['Self-Help', 'Productivity', 'Personal Development'],
+            spineColor: '#2E8B57',
+            textColor: '#FFFFFF',
+            reviews: [
+                { name: 'GrowthMindset', rating: 5, text: 'Life-changing insights on building sustainable habits.' },
+                { name: 'FocusBuilder', rating: 4, text: 'Actionable advice backed by science and real examples.' }
+            ]
+        },
+        {
+            id: 'sample-14',
+            title: 'Deep Work',
+            author: 'Cal Newport',
+            cover: 'https://covers.openlibrary.org/b/id/8370226-M.jpg',
+            rating: 4.5,
+            ratingCount: 6921,
+            description: 'A powerful guide to mastering focused success in a distracted world. Cal Newport explains how cultivating deep, concentrated work can dramatically improve productivity and create meaningful results in professional and personal life.',
+            categories: ['Productivity', 'Self-Improvement', 'Career Development'],
+            spineColor: '#1E3A8A',
+            textColor: '#FFFFFF',
+            reviews: [
+                { name: 'CodeMaster', rating: 5, text: 'A must-read for anyone serious about improving focus and output.' },
+                { name: 'SilentAchiever', rating: 4, text: 'Great framework for eliminating distractions and building deep concentration.' }
+            ]
+        },
+        {
+            id: 'sample-15',
+            title: 'The Psychology of Money',
+            author: 'Morgan Housel',
+            cover: 'https://covers.openlibrary.org/b/id/10521270-M.jpg',
+            rating: 4.7,
+            ratingCount: 11234,
+            description: 'An insightful exploration of how people think about money and the behaviors that influence financial decisions. Morgan Housel shares timeless lessons on wealth, greed, and happiness through engaging real-world stories.',
+            categories: ['Finance', 'Self-Development', 'Investing'],
+            spineColor: '#8B4513',
+            textColor: '#FFFFFF',
+            reviews: [
+                { name: 'SmartInvestor', rating: 5, text: 'A refreshing perspective on wealth and financial behavior.' },
+                { name: 'WealthBuilder', rating: 4, text: 'Simple yet powerful lessons that change how you view money.' }
+            ]
+        }
     ]
 };
 
@@ -261,6 +261,7 @@ class BookshelfRenderer3D {
         this.tooltipTimeout = null;
         this.sortCriteria = 'title'; // Default sort
         this.filterCriteria = 'all'; // Default filter
+        this.searchQuery = ''; // Default search query
 
         this.init();
     }
@@ -284,6 +285,15 @@ class BookshelfRenderer3D {
             });
         }
 
+        // Search listener for "Search for a feeling..."
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.searchQuery = e.target.value.toLowerCase();
+                this.refreshShelves();
+            });
+        }
+
         // Render all shelves with sample books
         this.refreshShelves();
 
@@ -296,10 +306,10 @@ class BookshelfRenderer3D {
         const showWant = this.filterCriteria === 'all' || this.filterCriteria === 'want';
         const showFinished = this.filterCriteria === 'all' || this.filterCriteria === 'finished';
 
-        // Count books first
-        const currentCount = this.getShelfBookCount('current');
-        const wantCount = this.getShelfBookCount('want');
-        const finishedCount = this.getShelfBookCount('finished');
+        // Count books first with search filter applied
+        const currentCount = this.getShelfBookCount('current', this.searchQuery);
+        const wantCount = this.getShelfBookCount('want', this.searchQuery);
+        const finishedCount = this.getShelfBookCount('finished', this.searchQuery);
 
         let totalVisibleBooks = 0;
         if (showCurrent) totalVisibleBooks += currentCount;
@@ -311,7 +321,7 @@ class BookshelfRenderer3D {
         // Update shelf visibility: Show shelf only if filter includes it AND (it has books OR we are specifically searching THIS shelf)
         // Actually, if we are in 'all' view, only show shelves that have books. 
         // If we are in specific shelf view, show it even if empty (but global empty state will override if total is 0)
-        
+
         const forceShowSpecific = this.filterCriteria !== 'all';
 
         this.updateShelfVisibility('shelf-current-3d', !isEmpty && showCurrent && (currentCount > 0 || forceShowSpecific));
@@ -327,18 +337,26 @@ class BookshelfRenderer3D {
         // Show/Hide Global Empty State
         const emptyState = document.getElementById('library-empty-state');
         if (emptyState) {
-            emptyState.style.display = isEmpty ? 'flex' : 'none';
+            emptyState.hidden = !isEmpty;
         }
     }
 
-    getShelfBookCount(shelfType) {
+    getShelfBookCount(shelfType, query = "") {
         const storageKey = 'bibliodrift_library';
         const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {
             current: [],
             want: [],
             finished: []
         };
-        return (localLibrary[shelfType] || []).length;
+        const books = localLibrary[shelfType] || [];
+        if (!query) return books.length;
+
+        return books.filter(b => {
+            const title = (b.title || b.volumeInfo?.title || "").toLowerCase();
+            const author = (b.author || (b.volumeInfo?.authors && b.volumeInfo.authors[0]) || "").toLowerCase();
+            const moods = (b.moods || []).join(" ").toLowerCase();
+            return title.includes(query) || author.includes(query) || moods.includes(query);
+        }).length;
     }
 
     updateShelfVisibility(containerId, isVisible) {
@@ -375,28 +393,42 @@ class BookshelfRenderer3D {
                     author: (b.volumeInfo.authors && b.volumeInfo.authors[0]) || 'Unknown',
                     cover: b.volumeInfo.imageLinks?.thumbnail || '',
                     description: b.volumeInfo.description || '',
-                    rating: 4.0, // Default for now
-                    ratingCount: 0,
+                    rating: b.volumeInfo.averageRating || 4.0,
+                    ratingCount: b.volumeInfo.ratingsCount || 0,
                     categories: b.volumeInfo.categories || [],
-                    spineColor: b.spineColor, // Might be undefined, generator handles it
+                    spineColor: b.spineColor,
+                    moods: b.moods || [],
                     reviews: []
                 };
             }
-            return b;
+            return { ...b, moods: b.moods || [] };
         });
+
+        // Apply Search Filter
+        if (this.searchQuery) {
+            books = books.filter(b => {
+                const title = b.title.toLowerCase();
+                const author = b.author.toLowerCase();
+                const moods = b.moods.join(" ").toLowerCase();
+                return title.includes(this.searchQuery) || author.includes(this.searchQuery) || moods.includes(this.searchQuery);
+            });
+        }
 
         // Sort books
         books.sort((a, b) => {
             if (this.sortCriteria === 'title') return a.title.localeCompare(b.title);
             if (this.sortCriteria === 'author') return a.author.localeCompare(b.author);
             if (this.sortCriteria === 'rating') return b.rating - a.rating;
-            // Sort by 'pages'. Since SAMPLE_BOOKS doesn't have page count, we'll strip 'pages' option or just map it to something else
-            // But let's assume title for now or mock it? 
+            if (this.sortCriteria === 'mood') {
+                const moodA = (a.moods && a.moods[0]) || "zzz";
+                const moodB = (b.moods && b.moods[0]) || "zzz";
+                return moodA.localeCompare(moodB);
+            }
             return a.title.localeCompare(b.title);
         });
 
         if (!books || books.length === 0) {
-            container.innerHTML = '<div class="empty-shelf-3d">No books yet... Start your collection!</div>';
+            container.innerHTML = '<div class="empty-shelf-3d" style="text-align: center; padding: 150px;">No books yet... Start your collection!</div>';
             return;
         }
 
@@ -411,11 +443,11 @@ class BookshelfRenderer3D {
         // Remove old listeners? It's hard without named functions. 
         // But since we clear innerHTML, we just re-attach to the container? No, container is persistent.
         // We should be careful about duplicate listeners on the container.
-        
+
         // A simple way to avoid duplicates is to set a custom property or remove and re-add.
         // Or better, just attach these once in init() if possible, but we need shelfType reference.
         // Since renderShelf is called multiple times, we should check if listeners are attached.
-        
+
         if (!container.dataset.dropListenersAttached) {
             container.addEventListener('dragover', (e) => {
                 e.preventDefault(); // Essential for drop
@@ -451,7 +483,7 @@ class BookshelfRenderer3D {
             e.dataTransfer.effectAllowed = 'move';
             spine.style.opacity = '0.5';
         });
-        
+
         spine.addEventListener('dragend', (e) => {
             spine.style.opacity = '1';
         });
@@ -482,23 +514,68 @@ class BookshelfRenderer3D {
         spine.classList.add(traits.fontClass);
         if (traits.titleModifier) spine.classList.add(traits.titleModifier);
 
-        spine.innerHTML = `
-            <div class="spine-face" style="background-color: ${traits.spineColor}; color: ${traits.textColor};">
-                <span class="spine-title">${book.title}</span>
-                <span class="spine-author">${book.author ? book.author.split(' ').pop() : ''}</span>
-                ${traits.pattern.includes('ornament') ? '<div class="spine-pattern-ornament"></div>' : ''}
-                ${traits.pattern.includes('bands') ? '<div class="spine-pattern-bands"></div>' : ''}
-                ${traits.pattern.includes('frame') ? '<div class="spine-pattern-frame"></div>' : ''}
-            </div>
-            <div class="book-edge"></div>
-            <div class="book-top" style="--spine-color: ${traits.spineColor};"></div>
-        `;
+        const face = document.createElement('div');
+        face.className = 'spine-face';
+        face.style.backgroundColor = traits.spineColor;
+        face.style.color = traits.textColor;
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'spine-title';
+        titleSpan.textContent = book.title;
+        face.appendChild(titleSpan);
+
+        const authorSpan = document.createElement('span');
+        authorSpan.className = 'spine-author';
+        authorSpan.textContent = book.author ? book.author.split(' ').pop() : '';
+        face.appendChild(authorSpan);
+
+        if (traits.pattern.includes('ornament')) {
+            const ornament = document.createElement('div');
+            ornament.className = 'spine-pattern-ornament';
+            face.appendChild(ornament);
+        }
+        if (traits.pattern.includes('bands')) {
+            const bands = document.createElement('div');
+            bands.className = 'spine-pattern-bands';
+            face.appendChild(bands);
+        }
+        if (traits.pattern.includes('frame')) {
+            const frame = document.createElement('div');
+            frame.className = 'spine-pattern-frame';
+            face.appendChild(frame);
+        }
+
+        const edge = document.createElement('div');
+        edge.className = 'book-edge';
+
+        const top = document.createElement('div');
+        top.className = 'book-top';
+        top.style.setProperty('--spine-color', traits.spineColor);
+
+        spine.innerHTML = '';
+        spine.appendChild(face);
+        spine.appendChild(edge);
+        spine.appendChild(top);
 
         // Event listeners
         spine.addEventListener('mouseenter', (e) => this.showTooltip(e, book));
         spine.addEventListener('mousemove', (e) => this.moveTooltip(e));
         spine.addEventListener('mouseleave', () => this.hideTooltip());
         spine.addEventListener('click', () => this.openModal(book));
+
+        // Add mood icon if primary mood exists
+        if (book.moods && book.moods.length > 0) {
+            const moodIcon = document.createElement('div');
+            moodIcon.className = 'spine-mood-icon';
+            moodIcon.style.position = 'absolute';
+            moodIcon.style.top = '10px';
+            moodIcon.style.width = '100%';
+            moodIcon.style.textAlign = 'center';
+            moodIcon.style.fontSize = '12px';
+            moodIcon.style.opacity = '0.7';
+            moodIcon.innerHTML = `<i class="fa-solid ${this.getMoodIcon(book.moods[0])}"></i>`;
+            spine.appendChild(moodIcon);
+        }
 
         return spine;
     }
@@ -581,6 +658,7 @@ class BookshelfRenderer3D {
         };
     }
 
+
     showTooltip(e, book) {
         this.currentBook = book;
 
@@ -594,7 +672,7 @@ class BookshelfRenderer3D {
         document.getElementById('tooltip-title').textContent = book.title;
         document.getElementById('tooltip-author').textContent = `by ${book.author}`;
         document.getElementById('tooltip-stars').textContent = this.getStarRating(book.rating);
-        document.getElementById('tooltip-rating-text').textContent = book.rating.toFixed(1);
+        document.getElementById('tooltip-rating-text').textContent = (book.rating != null ? book.rating.toFixed(1) : 'N/A');
         document.getElementById('tooltip-description').textContent = book.description.substring(0, 150) + '...';
 
         // Position tooltip
@@ -704,71 +782,183 @@ class BookshelfRenderer3D {
         if (titleEl) titleEl.textContent = book.title;
         if (authorEl) authorEl.textContent = book.author; // Removed "by" prefix to match design
         if (starsEl) starsEl.textContent = this.getStarRating(book.rating);
-        if (scoreEl) scoreEl.textContent = book.rating.toFixed(1);
+        if (scoreEl) scoreEl.textContent = (book.rating != null ? book.rating.toFixed(1) : 'N/A');
         if (countEl) countEl.textContent = `(${book.ratingCount} ratings)`;
 
+        // 5. Emotion Tagging Section
+        let taggingSection = document.getElementById('modal-mood-tagging');
+        if (!taggingSection) {
+            taggingSection = document.createElement('div');
+            taggingSection.id = 'modal-mood-tagging';
+            taggingSection.className = 'mood-tagging-section';
+            const infoPanel = document.querySelector('.book-info-panel');
+            if (infoPanel) {
+                // Insert before the action buttons
+                const actions = document.querySelector('.book-actions-section');
+                infoPanel.insertBefore(taggingSection, actions);
+            }
+        }
+
+        taggingSection.innerHTML = `
+            <h4 class="mood-tagging-title" style="margin-top: 10px; margin-bottom: 8px; color: var(--accent-gold); font-family: 'Playfair Display', serif;">How does this book make you feel?</h4>
+            <div class="emotion-tags-container">
+                ${['Melancholic', 'Cozy', 'Tense', 'Inspiring', 'Whimsical', 'Dark', 'Adventurous'].map(mood => {
+                    const isActive = book.moods && book.moods.includes(mood);
+                    return `<span class="emotion-tag ${isActive ? 'active' : ''}" data-mood="${mood}">
+                        <i class="fa-solid ${this.getMoodIcon(mood)}"></i> ${mood}
+                    </span>`;
+                }).join('')}
+            </div>
+        `;
         // Categories
         const categoriesContainer = document.getElementById('modal-categories');
         if (categoriesContainer && book.categories) {
-            categoriesContainer.innerHTML = book.categories.map(cat =>
-                `<span class="category-tag">${cat}</span>`
-            ).join('');
+            categoriesContainer.innerHTML = '';
+            book.categories.forEach(cat => {
+                const span = document.createElement('span');
+                span.className = 'category-tag';
+                span.textContent = cat;
+                categoriesContainer.appendChild(span);
+            });
         }
 
         // Reviews
         const reviewsContainer = document.getElementById('modal-reviews');
         if (reviewsContainer && book.reviews) {
-            reviewsContainer.innerHTML = book.reviews.map(review => `
-                <div class="review-item">
-                    <div class="review-header">
-                        <span class="reviewer-name">${review.name}</span>
-                        <span class="review-rating">${this.getStarRating(review.rating)}</span>
-                    </div>
-                    <p class="review-text">"${review.text}"</p>
-                </div>
-            `).join('');
+            reviewsContainer.innerHTML = '';
+            book.reviews.forEach(review => {
+                const item = document.createElement('div');
+                item.className = 'review-item';
+                
+                const header = document.createElement('div');
+                header.className = 'review-header';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'reviewer-name';
+                nameSpan.textContent = review.name;
+                header.appendChild(nameSpan);
+                
+                const ratingSpan = document.createElement('span');
+                ratingSpan.className = 'review-rating';
+                ratingSpan.textContent = this.getStarRating(review.rating);
+                header.appendChild(ratingSpan);
+                
+                item.appendChild(header);
+                
+                const textP = document.createElement('p');
+                textP.className = 'review-text';
+                textP.textContent = `"${review.text}"`;
+                item.appendChild(textP);
+                
+                reviewsContainer.appendChild(item);
+            });
         }
 
-        // Handle Shelf Selection
+        taggingSection.querySelectorAll('.emotion-tag').forEach(tag => {
+            tag.onclick = async () => {
+                const mood = tag.dataset.mood;
+                if (!book.moods) book.moods = [];
+
+                const index = book.moods.indexOf(mood);
+                if (index > -1) {
+                    book.moods.splice(index, 1);
+                    tag.style.background = 'var(--glass-bg)';
+                    tag.style.color = 'inherit';
+                    tag.classList.remove('active');
+                } else {
+                    book.moods.push(mood);
+                    tag.style.background = 'var(--accent-gold)';
+                    tag.style.color = '#000';
+                    tag.classList.add('active');
+                }
+
+                // Update in LocalStorage
+                await this.updateBookMoods(book.id, book.moods);
+            };
+        });
+
+        // 6. Handle Shelf Selection
         const shelfSelect = document.getElementById('modal-shelf-select');
         // Issue #23: Element binding for the remove button
         const removeBtn = document.getElementById('modal-remove-btn');
-        
+        const actionsSection = document.querySelector('.book-actions-section');
+        const reviewsSection = document.querySelector('.book-reviews-section');
+
+        // 6. AI Insight Section
+        const aiNoteEl = document.getElementById('modal-ai-note');
+        if (aiNoteEl) {
+            // Reset to skeleton while fetching
+            aiNoteEl.innerHTML = `
+                <div class="text-skeleton skeleton"></div>
+                <div class="text-skeleton skeleton" style="width: 90%"></div>
+            `;
+            
+            // Fetch vibe note using the shared renderer method
+            if (window.renderer && typeof window.renderer.fetchAIVibe === 'function') {
+                window.renderer.fetchAIVibe(book.title, book.author, book.description || "").then(vibe => {
+                    if (vibe) {
+                        const cleanVibe = vibe.replace(/^(Bookseller's Note:|Note:|Recommendation:)\s*/i, "");
+                        aiNoteEl.innerHTML = `<p style="font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); font-style: italic;">"${cleanVibe}"</p>`;
+                    } else {
+                        aiNoteEl.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">AI is contemplating the deep themes of this journey...</p>`;
+                    }
+                });
+            } else {
+                // Mock vibe for offline/fallback
+                setTimeout(() => {
+                    aiNoteEl.innerHTML = `<p style="font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); font-style: italic;">"A journey that resonates with the soul, perfect for quiet introspection."</p>`;
+                }, 800);
+            }
+        }
+
+        // Ensure action controls are always visible in the modal.
+        if (actionsSection) {
+            actionsSection.style.display = 'flex';
+            actionsSection.style.visibility = 'visible';
+            actionsSection.style.opacity = '1';
+        }
+
+        // Keep actions above reviews so Remove is visible without scrolling.
+        if (actionsSection && reviewsSection && actionsSection.nextElementSibling !== reviewsSection) {
+            reviewsSection.parentNode.insertBefore(actionsSection, reviewsSection);
+        }
+
         if (shelfSelect) {
             // Find current shelf
             const storageKey = 'bibliodrift_library';
             const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
             let currentShelf = 'current'; // Default
-            
+
             ['current', 'want', 'finished'].forEach(shelf => {
                 const found = (localLibrary[shelf] || []).find(b => b.id === book.id || (b.volumeInfo && b.id === book.id));
                 if (found) currentShelf = shelf;
             });
-            
+
             shelfSelect.value = currentShelf;
-            
+
             // Remove old listeners to avoid duplicates by cloning
             const newSelect = shelfSelect.cloneNode(true);
             shelfSelect.parentNode.replaceChild(newSelect, shelfSelect);
-            
-            newSelect.addEventListener('change', (e) => {
+
+            newSelect.addEventListener('change', async (e) => {
                 const newShelf = e.target.value;
-                this.moveBook(book.id, currentShelf, newShelf);
+                await this.moveBook(book.id, currentShelf, newShelf);
                 currentShelf = newShelf; // Update local tracker
-                
+
                 // Close modal after move? Optional. Let's keep it open but maybe show feedback.
                 // For now, shelf re-render happens in background.
             });
         }
-        
+
         if (removeBtn) {
             // Remove old listeners
             const newRemoveBtn = removeBtn.cloneNode(true);
             removeBtn.parentNode.replaceChild(newRemoveBtn, removeBtn);
+            newRemoveBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Remove from Library';
 
-            newRemoveBtn.addEventListener('click', () => {
-                if(confirm('Are you sure you want to remove this book from your library?')) {
-                    this.removeBook(book.id);
+            newRemoveBtn.addEventListener('click', async () => {
+                if (confirm('Are you sure you want to remove this book from your library?')) {
+                    await this.removeBook(book.id);
                     this.closeModal();
                 }
             });
@@ -800,6 +990,14 @@ class BookshelfRenderer3D {
         if (this.modal) {
             this.modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            
+            // Hide fixed elements (ambient leaf, scroll-to-top) to avoid overlapping description
+            const fixedControls = document.querySelectorAll('.ambient-sanctuary, .back-to-top');
+            fixedControls.forEach(el => el.style.opacity = '0');
+            fixedControls.forEach(el => el.style.pointerEvents = 'none');
+
+            // Setup interactive handlers (flip, close) for the current book
+            this.setupModalHandlers();
         }
     }
 
@@ -812,6 +1010,11 @@ class BookshelfRenderer3D {
             setTimeout(() => {
                 const bookObject = document.getElementById('book-3d-object');
                 if (bookObject) bookObject.classList.remove('flipped');
+                
+                // Restore fixed elements
+                const fixedControls = document.querySelectorAll('.ambient-sanctuary, .back-to-top');
+                fixedControls.forEach(el => el.style.opacity = '1');
+                fixedControls.forEach(el => el.style.pointerEvents = 'auto');
             }, 500);
         }
     }
@@ -820,12 +1023,16 @@ class BookshelfRenderer3D {
         // Book flip interaction
         const bookObject = document.getElementById('book-3d-object');
         if (bookObject) {
-            bookObject.addEventListener('click', (e) => {
+            // Remove old listener to avoid multi-flips
+            const newBook = bookObject.cloneNode(true);
+            bookObject.parentNode.replaceChild(newBook, bookObject);
+            
+            newBook.addEventListener('click', (e) => {
                 // If user is selecting text (e.g. description), don't flip
                 if (window.getSelection().toString().length > 0) {
                     return;
                 }
-                bookObject.classList.toggle('flipped');
+                newBook.classList.toggle('flipped');
             });
         }
 
@@ -866,14 +1073,14 @@ class BookshelfRenderer3D {
             const newAddBtn = addBtn.cloneNode(true);
             addBtn.parentNode.replaceChild(newAddBtn, addBtn);
 
-            newAddBtn.addEventListener('click', () => {
+            newAddBtn.addEventListener('click', async () => {
                 newAddBtn.innerHTML = '<i class="fa-solid fa-check"></i> Added!';
                 newAddBtn.style.background = '#4CAF50';
                 newAddBtn.style.color = '#fff';
 
                 // Store in localStorage (integrate with existing library system)
                 if (this.currentBook) {
-                    this.addToLibrary(this.currentBook);
+                    await this.addToLibrary(this.currentBook);
                 }
 
                 setTimeout(() => {
@@ -904,7 +1111,24 @@ class BookshelfRenderer3D {
         }
     }
 
-    addToLibrary(book) {
+    async addToLibrary(book) {
+        if (window.libManager && typeof window.libManager.addBook === 'function') {
+            const normalizedBook = {
+                id: book.id,
+                volumeInfo: {
+                    title: book.title,
+                    authors: [book.author],
+                    imageLinks: { thumbnail: book.cover },
+                    description: book.description,
+                    categories: book.categories
+                }
+            };
+
+            await window.libManager.addBook(normalizedBook, 'want');
+            this.refreshShelves();
+            return;
+        }
+
         // Get existing library from localStorage
         const storageKey = 'bibliodrift_library';
         let library = JSON.parse(localStorage.getItem(storageKey)) || {
@@ -936,41 +1160,60 @@ class BookshelfRenderer3D {
         console.log(`Added ${book.title} to library`);
     }
 
-    moveBook(bookId, fromShelf, toShelf) {
+    async moveBook(bookId, fromShelf, toShelf) {
         if (fromShelf === toShelf) return;
+
+        if (window.libManager && typeof window.libManager.findBookInShelf === 'function') {
+            const found = window.libManager.findBookInShelf(bookId);
+            if (!found || !found.book) {
+                console.error("Book not found in source shelf");
+                return;
+            }
+
+            await window.libManager.removeBook(bookId);
+            await window.libManager.addBook(found.book, toShelf);
+            this.refreshShelves();
+            return;
+        }
 
         const storageKey = 'bibliodrift_library';
         const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
-        
+
         // Find existing lists
         if (!localLibrary[fromShelf]) localLibrary[fromShelf] = [];
         if (!localLibrary[toShelf]) localLibrary[toShelf] = [];
 
         // Find the book index
         const bookIndex = localLibrary[fromShelf].findIndex(b => b.id === bookId || (b.volumeInfo && b.id === bookId));
-        
+
         if (bookIndex === -1) {
             console.error("Book not found in source shelf");
             return;
         }
 
         const book = localLibrary[fromShelf][bookIndex];
-        
+
         // Remove from old shelf
         localLibrary[fromShelf].splice(bookIndex, 1);
-        
+
         // Add to new shelf
         localLibrary[toShelf].push(book);
-        
+
         // Save and refresh
         localStorage.setItem(storageKey, JSON.stringify(localLibrary));
         this.refreshShelves();
-        
+
         // Visual Feedback (optional)
         console.log(`Moved book ${bookId} from ${fromShelf} to ${toShelf}`);
     }
 
-    removeBook(bookId) {
+    async removeBook(bookId) {
+        if (window.libManager && typeof window.libManager.removeBook === 'function') {
+            await window.libManager.removeBook(bookId);
+            this.refreshShelves();
+            return;
+        }
+
         const storageKey = 'bibliodrift_library';
         const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
 
@@ -990,12 +1233,53 @@ class BookshelfRenderer3D {
         }
     }
 
+    getMoodIcon(mood) {
+        const icons = {
+            'Melancholic': 'fa-cloud-showers-heavy',
+            'Cozy': 'fa-mug-hot',
+            'Tense': 'fa-bolt',
+            'Inspiring': 'fa-lightbulb',
+            'Whimsical': 'fa-wand-magic-sparkles',
+            'Dark': 'fa-moon',
+            'Adventurous': 'fa-compass'
+        };
+        return icons[mood] || 'fa-tag';
+    }
+
+    async updateBookMoods(bookId, moods) {
+        const storageKey = 'bibliodrift_library';
+        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {
+            current: [],
+            want: [],
+            finished: []
+        };
+
+        let found = false;
+        ['current', 'want', 'finished'].forEach(shelf => {
+            const book = localLibrary[shelf].find(b => b.id === bookId);
+            if (book) {
+                book.moods = moods;
+                found = true;
+            }
+        });
+
+        if (found) {
+            localStorage.setItem(storageKey, JSON.stringify(localLibrary));
+            // Notify global libManager to sync with backend if available
+            if (window.libManager && window.libManager.updateBook) {
+                await window.libManager.updateBook(bookId, { moods });
+            }
+            // Sort by current criteria after update
+            this.refreshShelves();
+        }
+    }
+
     getStarRating(rating) {
-        const fullStars = Math.floor(rating);
-        const hasHalf = rating % 1 >= 0.5;
+        const fullStars = Math.floor(rating || 0);
+        const hasHalf = (rating || 0) % 1 >= 0.5;
         const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
 
-        return '★'.repeat(fullStars) + (hasHalf ? '½' : '') + '☆'.repeat(emptyStars);
+        return '★'.repeat(Math.max(0, fullStars)) + (hasHalf ? '½' : '') + '☆'.repeat(Math.max(0, emptyStars));
     }
 }
 
@@ -1003,6 +1287,8 @@ class BookshelfRenderer3D {
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize on library page
     if (document.getElementById('library-shelves')) {
-        window.bookshelfRenderer = new BookshelfRenderer3D();
+        const renderer = new BookshelfRenderer3D();
+        window.bookshelf3D = renderer;
+        window.bookshelfRenderer = renderer;
     }
 });
