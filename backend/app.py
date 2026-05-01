@@ -1120,6 +1120,32 @@ def login():
         return handle_exception(e, "login")
 
 
+@app.route('/api/v1/auth/verify', methods=['GET'])
+@jwt_required()
+def verify_auth():
+    """Verify that the current JWT is still valid and return the current user."""
+    current_user_id = get_jwt_identity()
+
+    try:
+        user = db.session.get(User, int(current_user_id))
+    except (TypeError, ValueError):
+        user = None
+
+    if not user:
+        return auth_error("Authenticated user not found")
+
+    return success_response(
+        data={
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            }
+        },
+        message="Token is valid"
+    )
+
+
 # ==================== READING STATS ENDPOINTS ====================
 @app.route('/api/v1/stats/goal', methods=['POST'])
 @jwt_required()
