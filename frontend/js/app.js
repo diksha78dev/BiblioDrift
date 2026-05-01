@@ -1558,13 +1558,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         const wantCount = libManager.library.want?.length || 0;
         const finishedCount = libManager.library.finished?.length || 0;
 
-        document.getElementById('stat-current').textContent = currentCount;
-        document.getElementById('stat-want').textContent = wantCount;
-        document.getElementById('stat-finished').textContent = finishedCount;
+        const totalBooks = currentCount + wantCount + finishedCount;
 
-        // Calculate "Day Streak" (Mock for now, or based on last activity dates if available)
-        // For MVP, randomly generate a streak to encourage user
-        document.getElementById('stat-streak').textContent = Math.floor(Math.random() * 14) + 1;
+        // Vibe/Genre calculation
+        const allBooks = [
+            ...(libManager.library.current || []),
+            ...(libManager.library.want || []),
+            ...(libManager.library.finished || [])
+        ];
+        
+        const categoryCounts = {};
+        allBooks.forEach(book => {
+            const categories = book.volumeInfo?.categories || [];
+            categories.forEach(cat => {
+                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+            });
+        });
+        
+        let topVibe = 'Mystery'; // Fallback
+        if (Object.keys(categoryCounts).length > 0) {
+            topVibe = Object.keys(categoryCounts).reduce((a, b) => categoryCounts[a] > categoryCounts[b] ? a : b);
+        } else if (totalBooks === 0) {
+            topVibe = '-';
+        }
+
+        const statTotalEl = document.getElementById('stat-total');
+        const statWantDashEl = document.getElementById('stat-want-dash');
+        const statVibeEl = document.getElementById('stat-vibe');
+        
+        if (statTotalEl) statTotalEl.textContent = totalBooks;
+        if (statWantDashEl) statWantDashEl.textContent = wantCount;
+        if (statVibeEl) statVibeEl.textContent = topVibe;
+
+        // Progress Bar Calculation
+        const barFinished = document.getElementById('bar-finished');
+        const barCurrent = document.getElementById('bar-current');
+        const barWant = document.getElementById('bar-want');
+        
+        const countFinishedEl = document.getElementById('count-finished');
+        const countCurrentEl = document.getElementById('count-current');
+        const countWantEl = document.getElementById('count-want');
+        
+        if (countFinishedEl) countFinishedEl.textContent = finishedCount;
+        if (countCurrentEl) countCurrentEl.textContent = currentCount;
+        if (countWantEl) countWantEl.textContent = wantCount;
+        
+        if (totalBooks > 0) {
+            setTimeout(() => {
+                if (barFinished) barFinished.style.width = `${(finishedCount / totalBooks) * 100}%`;
+                if (barCurrent) barCurrent.style.width = `${(currentCount / totalBooks) * 100}%`;
+                if (barWant) barWant.style.width = `${(wantCount / totalBooks) * 100}%`;
+            }, 100);
+        }
 
         // Populate Achievements
         const achievementsGrid = document.getElementById('achievements-grid');

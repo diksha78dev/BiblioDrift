@@ -3091,6 +3091,54 @@ main {
     color: var(--text-muted);
 }
 
+.reading-stats-dashboard {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.progress-breakdown {
+    text-align: left;
+    padding: 1.5rem;
+}
+
+.progress-title {
+    font-size: 1.2rem !important;
+    margin-bottom: 1rem !important;
+    color: var(--text-main) !important;
+    text-align: left;
+    font-family: "Playfair Display", serif;
+}
+
+.progress-bar-container {
+    display: flex;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+}
+
+.progress-segment {
+    transition: width 1s ease-out;
+}
+.progress-segment.finished { background: var(--accent-gold); }
+.progress-segment.current { background: var(--wood-light); }
+.progress-segment.want { background: var(--text-muted); opacity: 0.7; }
+
+.progress-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.legend-finished { color: var(--accent-gold); font-size: 0.6rem; margin-right: 4px; }
+.legend-current { color: var(--wood-light); font-size: 0.6rem; margin-right: 4px; }
+.legend-want { color: var(--text-muted); opacity: 0.7; font-size: 0.6rem; margin-right: 4px; }
+
 .profile-content {
     max-width: 1200px;
     margin: 0 auto;
