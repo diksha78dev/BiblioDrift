@@ -365,19 +365,17 @@
         window.MOOD_API_BASE = 'http://localhost:5001/api/v1';
 
         document.addEventListener('DOMContentLoaded', () => {
-            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-            if (isLoggedIn) {
-                const link = document.getElementById('navAuthLink');
-                const tooltip = document.getElementById('navAuthTooltip');
+            const link = document.getElementById('navAuthLink');
+            const tooltip = document.getElementById('navAuthTooltip');
 
-                if (link) {
-                    link.innerHTML = '<i class="fa-solid fa-user"></i>';
-                    link.href = 'profile.html';
-                }
-                if (tooltip) {
-                    tooltip.innerHTML = '<i class="fa-solid fa-address-card"></i> View Profile';
-                }
+            if (typeof window.verifyStoredAuthSession === 'function' && typeof window.renderAuthNavigation === 'function') {
+                window.verifyStoredAuthSession().then((user) => {
+                    window.renderAuthNavigation(link, tooltip, Boolean(user));
+                });
+                return;
             }
+
+            window.renderAuthNavigation?.(link, tooltip, false);
         });
     </script>
     <script src="../js/config.js"></script>

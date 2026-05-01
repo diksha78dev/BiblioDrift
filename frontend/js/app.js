@@ -131,6 +131,92 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+function clearStoredAuthState() {
+    SafeStorage.remove('bibliodrift_user');
+    SafeStorage.remove('bibliodrift_token');
+    SafeStorage.remove('isLoggedIn');
+}
+
+function parseStoredUser() {
+    const userStr = SafeStorage.get('bibliodrift_user');
+    if (!userStr) return null;
+
+    try {
+        return JSON.parse(userStr);
+    } catch (error) {
+        return null;
+    }
+}
+
+function renderAuthNavigation(authLink, tooltip, isAuthenticated) {
+    if (!authLink) return;
+
+    if (isAuthenticated) {
+        authLink.innerHTML = '<i class="fa-solid fa-user"></i>';
+        authLink.href = 'profile.html';
+        authLink.classList.remove('active');
+        if (tooltip) tooltip.innerHTML = '<i class="fa-solid fa-id-card"></i> View Profile';
+        return;
+    }
+
+    authLink.textContent = 'Sign In';
+    authLink.href = 'auth.html';
+    if (tooltip) tooltip.innerHTML = '<i class="fa-solid fa-key"></i> Access account';
+}
+
+let authSessionPromise = null;
+
+async function verifyStoredAuthSession() {
+    if (authSessionPromise) {
+        return authSessionPromise;
+    }
+
+    authSessionPromise = (async () => {
+        const token = SafeStorage.get('bibliodrift_token');
+        const storedUser = parseStoredUser();
+
+        if (!token) {
+            if (storedUser || SafeStorage.get('isLoggedIn') === 'true') {
+                clearStoredAuthState();
+            }
+            return null;
+        }
+
+        try {
+            const response = await fetch(`${MOOD_API_BASE}/auth/verify`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 422) {
+                    clearStoredAuthState();
+                }
+                return null;
+            }
+
+            const data = await response.json();
+            const verifiedUser = data.user || storedUser;
+
+            if (verifiedUser) {
+                SafeStorage.set('bibliodrift_user', JSON.stringify(verifiedUser));
+            }
+            SafeStorage.set('isLoggedIn', 'true');
+
+            return verifiedUser;
+        } catch (error) {
+            console.warn('Auth verification failed; using cached session state if available.', error);
+            return storedUser;
+        }
+    })();
+
+    return authSessionPromise;
+}
+
+window.verifyStoredAuthSession = verifyStoredAuthSession;
+window.renderAuthNavigation = renderAuthNavigation;
+
 /**
  * Robust Wrapper for Storage (LocalStorage + IndexedDB Fallback)
  * Prevents application data loss and handles browser storage wipes/quotas.
@@ -1612,11 +1698,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const isLoggedIn = !!libManager.getUser(); // Rely on user object instead of forgeable flag
     const authLink = document.getElementById('navAuthLink');
-    if (isLoggedIn && authLink) {
-        authLink.innerHTML = '<i class="fa-solid fa-user"></i>';
-        authLink.href = 'profile.html';
-        const tooltip = document.getElementById('navAuthTooltip');
-        if (tooltip) tooltip.innerHTML = '<i class="fa-solid fa-id-card"></i> Profile';
+    const tooltip = document.getElementById('navAuthTooltip');
+    renderAuthNavigation(authLink, tooltip, Boolean(verifiedUser));
+
+    if (verifiedUser) {
+        await libManager.syncWithBackend();
     }
 
     const searchInput = document.getElementById('searchInput');
@@ -1690,7 +1776,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Check if Profile Page
     if (document.getElementById('profile-page')) {
-        const user = libManager.getUser();
+        const user = verifiedUser;
         if (!user) {
             window.location.href = 'auth.html';
             return;
@@ -1850,6 +1936,7 @@ async function handleAuth(event) {
             // Success!
             // Token is now in an HttpOnly cookie (managed by backend)
             SafeStorage.set('bibliodrift_user', JSON.stringify(data.user));
+            SafeStorage.set('isLoggedIn', 'true');
 
             if (typeof showToast === 'function')
                 showToast(`${mode === 'login' ? 'Welcome back' : 'Welcome'}, ${data.user.username}!`, "success");
