@@ -262,6 +262,8 @@ class BookshelfRenderer3D {
         this.sortCriteria = 'title'; // Default sort
         this.filterCriteria = 'all'; // Default filter
         this.searchQuery = ''; // Default search query
+        this.currentView = 'shelves'; // 'shelves' or 'constellation'
+        this.constellationSimulation = null; // Store D3 simulation
 
         this.init();
     }
@@ -290,7 +292,43 @@ class BookshelfRenderer3D {
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.searchQuery = e.target.value.toLowerCase();
+                if (this.currentView === 'shelves') {
+                    this.refreshShelves();
+                } else {
+                    this.renderConstellation();
+                }
+            });
+        }
+
+        // View Toggles
+        const btnShelves = document.getElementById('view-shelves-btn');
+        const btnConstellation = document.getElementById('view-constellation-btn');
+        const containerShelves = document.getElementById('library-shelves');
+        const containerConstellation = document.getElementById('constellation-container');
+
+        if (btnShelves && btnConstellation) {
+            btnShelves.addEventListener('click', () => {
+                this.currentView = 'shelves';
+                btnShelves.classList.add('active-view');
+                btnShelves.classList.replace('btn-secondary', 'btn-primary');
+                btnConstellation.classList.remove('active-view');
+                btnConstellation.classList.replace('btn-primary', 'btn-secondary');
+                
+                containerShelves.classList.remove('hidden');
+                containerConstellation.classList.add('hidden');
                 this.refreshShelves();
+            });
+
+            btnConstellation.addEventListener('click', () => {
+                this.currentView = 'constellation';
+                btnConstellation.classList.add('active-view');
+                btnConstellation.classList.replace('btn-secondary', 'btn-primary');
+                btnShelves.classList.remove('active-view');
+                btnShelves.classList.replace('btn-primary', 'btn-secondary');
+                
+                containerShelves.classList.add('hidden');
+                containerConstellation.classList.remove('hidden');
+                this.renderConstellation();
             });
         }
 
@@ -1299,6 +1337,233 @@ class BookshelfRenderer3D {
         const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
 
         return '★'.repeat(Math.max(0, fullStars)) + (hasHalf ? '½' : '') + '☆'.repeat(Math.max(0, emptyStars));
+    }
+    // =========================================================
+    // VIBE CONSTELLATION (D3 FORCE GRAPH)
+    // =========================================================
+    
+    renderConstellation() {
+        const container = document.getElementById('constellation-container');
+        if (!container) return;
+        
+        // Stop previous simulation if exists
+        if (this.constellationSimulation) {
+            this.constellationSimulation.stop();
+        }
+        
+        container.innerHTML = ''; // Clear SVG
+        
+        // Gather all books
+        const storageKey = 'bibliodrift_library';
+        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {
+            current: [],
+            want: [],
+            finished: []
+        };
+        
+        let allBooks = [
+            ...(localLibrary.current || []),
+            ...(localLibrary.want || []),
+            ...(localLibrary.finished || [])
+        ];
+        
+        // Normalize book structure
+        allBooks = allBooks.map(b => {
+            if (b.volumeInfo) {
+                return {
+                    id: b.id,
+                    title: b.volumeInfo.title || 'Untitled',
+                    author: (b.volumeInfo.authors && b.volumeInfo.authors[0]) || 'Unknown',
+                    cover: b.volumeInfo.imageLinks?.thumbnail || '',
+                    description: b.volumeInfo.description || '',
+                    rating: b.volumeInfo.averageRating || null,
+                    moods: b.moods || [],
+                    spineColor: b.spineColor
+                };
+            }
+            return { ...b, moods: b.moods || [] };
+        });
+
+        // Apply Search Filter
+        if (this.searchQuery) {
+            allBooks = allBooks.filter(b => {
+                const title = b.title.toLowerCase();
+                const author = b.author.toLowerCase();
+                const moods = b.moods.join(" ").toLowerCase();
+                return title.includes(this.searchQuery) || author.includes(this.searchQuery) || moods.includes(this.searchQuery);
+            });
+        }
+        
+        // Empty state check
+        const emptyState = document.getElementById('library-empty-state');
+        if (allBooks.length === 0) {
+            if (emptyState) emptyState.hidden = false;
+            return;
+        } else {
+            if (emptyState) emptyState.hidden = true;
+        }
+
+        // Setup dimensions
+        const width = container.clientWidth || 1000;
+        const height = 600;
+
+        // Colors for moods
+        const moodColors = {
+            'cozy': '#8d6e63',
+            'dark': '#424242',
+            'mysterious': '#5e35b1',
+            'romantic': '#e91e63',
+            'adventurous': '#ff5722',
+            'melancholy': '#607d8b',
+            'uplifting': '#4caf50',
+            'default': '#d4af37' // accent-gold
+        };
+
+        const nodes = allBooks.map(b => {
+            const primaryMood = (b.moods && b.moods[0]) ? b.moods[0].toLowerCase() : 'default';
+            return {
+                ...b,
+                radius: 35, // Size of cover
+                color: moodColors[primaryMood] || moodColors['default'],
+                primaryMood: primaryMood
+            };
+        });
+
+        // Create links between books that share the same primary mood
+        const links = [];
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                if (nodes[i].primaryMood !== 'default' && nodes[i].primaryMood === nodes[j].primaryMood) {
+                    links.push({
+                        source: nodes[i].id,
+                        target: nodes[j].id,
+                        value: 1
+                    });
+                }
+            }
+        }
+
+        const svg = d3.select("#constellation-container").append("svg")
+            .attr("width", "100%")
+            .attr("height", height)
+            .style("background", "linear-gradient(to bottom, #111, #1a1a1a)")
+            .style("border-radius", "8px")
+            .style("box-shadow", "inset 0 0 50px rgba(0,0,0,0.5)");
+
+        // Add defs for cover images and glow filters
+        const defs = svg.append("defs");
+        
+        // Glow filter
+        const filter = defs.append("filter").attr("id", "glow");
+        filter.append("feGaussianBlur").attr("stdDeviation", "3.5").attr("result", "coloredBlur");
+        const feMerge = filter.append("feMerge");
+        feMerge.append("feMergeNode").attr("in", "coloredBlur");
+        feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+        // Patterns for covers
+        nodes.forEach(node => {
+            defs.append("pattern")
+                .attr("id", "cover-" + node.id)
+                .attr("patternUnits", "userSpaceOnUse")
+                .attr("width", node.radius * 2)
+                .attr("height", node.radius * 2)
+                .append("image")
+                .attr("href", node.cover || '../assets/images/biblioDrift_favicon.png')
+                .attr("width", node.radius * 2)
+                .attr("height", node.radius * 2)
+                .attr("preserveAspectRatio", "xMidYMid slice");
+        });
+
+        // Initialize forces
+        this.constellationSimulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(120).strength(0.3))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collide", d3.forceCollide().radius(d => d.radius + 10).iterations(2));
+
+        // Draw links
+        const link = svg.append("g")
+            .attr("stroke", "rgba(255, 255, 255, 0.15)")
+            .attr("stroke-width", 1.5)
+            .selectAll("line")
+            .data(links)
+            .join("line");
+
+        // Draw nodes
+        const node = svg.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .join("circle")
+            .attr("r", d => d.radius)
+            .attr("fill", d => `url(#cover-${d.id})`)
+            .attr("stroke", d => d.color)
+            .attr("stroke-width", 3)
+            .style("filter", "url(#glow)")
+            .style("cursor", "pointer")
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        // Interaction
+        node.on("mouseover", (event, d) => {
+            d3.select(event.currentTarget)
+                .transition().duration(200)
+                .attr("r", d.radius * 1.2)
+                .attr("stroke-width", 4);
+            this.showTooltip(event, d);
+        })
+        .on("mousemove", (event) => {
+            this.moveTooltip(event);
+        })
+        .on("mouseout", (event, d) => {
+            d3.select(event.currentTarget)
+                .transition().duration(200)
+                .attr("r", d.radius)
+                .attr("stroke-width", 3);
+            this.hideTooltip();
+        })
+        .on("click", (event, d) => {
+            this.openModal(d);
+        });
+
+        this.constellationSimulation.on("tick", () => {
+            // Keep within bounds
+            nodes.forEach(d => {
+                d.x = Math.max(d.radius, Math.min(width - d.radius, d.x));
+                d.y = Math.max(d.radius, Math.min(height - d.radius, d.y));
+            });
+
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+        });
+
+        // Drag functions
+        const self = this;
+        function dragstarted(event) {
+            if (!event.active) self.constellationSimulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+            self.moveTooltip(event); // keep tooltip with it
+        }
+
+        function dragended(event) {
+            if (!event.active) self.constellationSimulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
     }
 }
 
