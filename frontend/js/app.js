@@ -152,7 +152,7 @@ function renderAuthNavigation(authLink, tooltip, isAuthenticated) {
     if (!authLink) return;
 
     if (isAuthenticated) {
-        authLink.innerHTML = '<i class="fa-solid fa-user"></i>';
+        authLink.innerHTML = '<i class="fa-solid fa-user"></i> Profile';
         authLink.href = 'profile.html';
         authLink.classList.remove('active');
         if (tooltip) tooltip.innerHTML = '<i class="fa-solid fa-id-card"></i> View Profile';
@@ -1700,10 +1700,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-    const isLoggedIn = !!libManager.getUser(); // Rely on user object instead of forgeable flag
+    const verifiedUser = await verifyStoredAuthSession();
+    const isLoggedIn = !!libManager.getUser() || !!verifiedUser; // Rely on user object instead of forgeable flag
     const authLink = document.getElementById('navAuthLink');
     const tooltip = document.getElementById('navAuthTooltip');
     renderAuthNavigation(authLink, tooltip, Boolean(verifiedUser));
+
+    // Redirect if already logged in and on the sign-in page
+    if (verifiedUser && window.location.pathname.endsWith('auth.html')) {
+        window.location.href = 'profile.html';
+        return;
+    }
 
     if (verifiedUser) {
         await libManager.syncWithBackend();
