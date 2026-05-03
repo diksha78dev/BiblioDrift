@@ -1946,6 +1946,22 @@ async function handleAuth(event) {
         return;
     }
 
+    // Demo bypass logic
+    if (email === 'demo@bibliodrift.com') {
+        const demoUser = { id: 1, username: 'Demo User', email: 'demo@bibliodrift.com' };
+        SafeStorage.set('bibliodrift_user', JSON.stringify(demoUser));
+        SafeStorage.set('isLoggedIn', 'true');
+        SafeStorage.set('bibliodrift_token', 'demo-token-12345');
+        
+        if (typeof showToast === 'function')
+            showToast(`Welcome, Demo User!`, "success");
+
+        setTimeout(() => {
+            window.location.href = "library.html";
+        }, 1000);
+        return;
+    }
+
     // Prepare Payload
     let payload = {};
     let endpoint = "";
