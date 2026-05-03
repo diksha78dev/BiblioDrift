@@ -18,7 +18,7 @@ from middleware import safe_request_handler, validate_content_type_middleware, r
 # Load environment variables from .env file BEFORE importing config
 load_dotenv()
 
-from config import app_config, setup_logging
+from config import app_config, setup_logging, validate_required_env_vars
 from ai_service import generate_book_note, get_ai_recommendations, get_book_mood_tags_safe, generate_chat_response, llm_service
 from models import db, User, Book, ShelfItem, BookNote, ReadingGoal, ReadingStats, Collection, CollectionItem, PriceHistory, PriceAlert, Review, register_user, login_user
 from price_tracker import get_price_tracker
@@ -84,6 +84,10 @@ except ImportError:
     logger.warning("Mood analysis package not available - some endpoints will be disabled")
 
 app = Flask(__name__, static_folder='.', static_url_path='')
+
+# Validate required environment variables at startup
+# This will raise ValueError if any required variables are missing
+validate_required_env_vars()
 
 # Apply configuration to Flask app
 app.config.update(app_config.flask_config)

@@ -154,6 +154,21 @@ class Config:
         """
         errors = []
         
+        # Check for required environment variables
+        required_vars = {
+            'JWT_SECRET_KEY': 'JWT authentication secret key',
+            'GOOGLE_BOOKS_API_KEY': 'Google Books API key for book discovery',
+            'DATABASE_URL': 'Database connection URL'
+        }
+        
+        for var_name, description in required_vars.items():
+            value = os.getenv(var_name, '').strip()
+            if not value or value.startswith('your-') or value.startswith('your_'):
+                errors.append(
+                    f"Missing or invalid {var_name}: {description}. "
+                    f"Please set {var_name} in your .env file."
+                )
+        
         # Validate JWT secret key
         if self.jwt.secret_key == 'default-dev-secret-key':
             if self.is_production():
@@ -286,3 +301,30 @@ def setup_logging(config: Config) -> logging.Logger:
 
 # Global configuration instance
 app_config = get_config()
+
+
+def validate_required_env_vars() -> None:
+    """
+    Validate that all required environment variables are set at startup.
+    
+    This function checks for critical configuration values that are needed
+    for the application to function properly. It's called before the Flask
+    app starts accepting requests.
+    
+    Raises:
+        ValueError: If any required environment variables are missing or invalid.
+    """
+    is_valid, errors = app_config.validate()
+    
+    if not is_valid:
+        error_message = (
+            "\n" + "="*70 + "\n"
+            "STARTUP ERROR: Missing or Invalid Environment Variables\n"
+            "="*70 + "\n" +
+            "\n".join(errors) +
+            "\n\n" +
+            "Please check your .env file and ensure all required variables are set.\n"
+            "See config/.env.example for reference.\n" +
+            "="*70 + "\n"
+        )
+        raise ValueError(error_message)
