@@ -98,6 +98,10 @@ except ImportError:
 # =====================================================================
 app = Flask(__name__, static_folder='.', static_url_path='')
 
+# Validate required environment variables at startup
+# This will raise ValueError if any required variables are missing
+validate_required_env_vars()
+
 # Apply configuration to Flask app
 app.config.update(app_config.flask_config)
 
