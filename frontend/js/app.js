@@ -131,6 +131,96 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+function clearStoredAuthState() {
+    SafeStorage.remove('bibliodrift_user');
+    SafeStorage.remove('bibliodrift_token');
+    SafeStorage.remove('isLoggedIn');
+}
+
+function parseStoredUser() {
+    const userStr = SafeStorage.get('bibliodrift_user');
+    if (!userStr) return null;
+
+    try {
+        return JSON.parse(userStr);
+    } catch (error) {
+        return null;
+    }
+}
+
+function renderAuthNavigation(authLink, tooltip, isAuthenticated) {
+    if (!authLink) return;
+
+    if (isAuthenticated) {
+        authLink.innerHTML = '<i class="fa-solid fa-user"></i> Profile';
+        authLink.href = 'profile.html';
+        authLink.classList.remove('active');
+        if (tooltip) tooltip.innerHTML = '<i class="fa-solid fa-id-card"></i> View Profile';
+        return;
+    }
+
+    authLink.textContent = 'Sign In';
+    authLink.href = 'auth.html';
+    if (tooltip) tooltip.innerHTML = '<i class="fa-solid fa-key"></i> Access account';
+}
+
+let authSessionPromise = null;
+
+async function verifyStoredAuthSession() {
+    if (authSessionPromise) {
+        return authSessionPromise;
+    }
+
+    authSessionPromise = (async () => {
+        const token = SafeStorage.get('bibliodrift_token');
+        const storedUser = parseStoredUser();
+
+        if (!token) {
+            if (storedUser || SafeStorage.get('isLoggedIn') === 'true') {
+                clearStoredAuthState();
+            }
+            return null;
+        }
+
+        if (token === 'demo-token-12345') {
+            return storedUser;
+        }
+
+        try {
+            const response = await fetch(`${MOOD_API_BASE}/auth/verify`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 422) {
+                    clearStoredAuthState();
+                }
+                return null;
+            }
+
+            const data = await response.json();
+            const verifiedUser = data.user || storedUser;
+
+            if (verifiedUser) {
+                SafeStorage.set('bibliodrift_user', JSON.stringify(verifiedUser));
+            }
+            SafeStorage.set('isLoggedIn', 'true');
+
+            return verifiedUser;
+        } catch (error) {
+            console.warn('Auth verification failed; using cached session state if available.', error);
+            return storedUser;
+        }
+    })();
+
+    return authSessionPromise;
+}
+
+window.verifyStoredAuthSession = verifyStoredAuthSession;
+window.renderAuthNavigation = renderAuthNavigation;
+
 /**
  * Robust Wrapper for Storage (LocalStorage + IndexedDB Fallback)
  * Prevents application data loss and handles browser storage wipes/quotas.
@@ -392,6 +482,21 @@ class BookRenderer {
         this.libraryManager = libraryManager;
     }
 
+    renderSkeletons(container, count = 5, type = 'card') {
+        if (!container) return;
+        let html = '';
+        if (type === 'card') {
+            html = Array(count).fill(0).map(() => `
+                <div class="book-skeleton skeleton"></div>
+            `).join('');
+        } else if (type === 'spine') {
+            html = Array(count).fill(0).map(() => `
+                <div class="spine-skeleton skeleton"></div>
+            `).join('');
+        }
+        container.innerHTML = html;
+    }
+
     async createBookElement(bookData, shelf = null) {
         const { id, volumeInfo } = bookData;
         const progress = typeof bookData.progress === 'number' ? bookData.progress : 0;
@@ -640,7 +745,26 @@ class BookRenderer {
         document.getElementById('modal-img').src = book.volumeInfo.imageLinks?.thumbnail.replace('http:', 'https:') || '';
         document.getElementById('modal-title').textContent = book.volumeInfo.title;
         document.getElementById('modal-author').textContent = book.volumeInfo.authors?.join(", ") || "Unknown Author";
-        document.getElementById('modal-summary').textContent = book.volumeInfo.description || "No description available.";
+        
+        const summaryEl = document.getElementById('modal-summary');
+        if (summaryEl) {
+            // Show skeletons while AI is "thinking"
+            summaryEl.innerHTML = `
+                <div class="text-skeleton skeleton"></div>
+                <div class="text-skeleton skeleton" style="width: 90%"></div>
+            `;
+
+            // Fetch the AI vibe to populate the Insight box
+            this.fetchAIVibe(book.volumeInfo.title, book.volumeInfo.authors?.join(", ") || "", book.volumeInfo.description || "").then(vibe => {
+                if (vibe) {
+                    const cleanVibe = vibe.replace(/^(Bookseller's Note:|Note:|Recommendation:)\s*/i, "");
+                    summaryEl.innerHTML = `<p class="fade-in">${cleanVibe}</p>`;
+                } else {
+                    // Fallback to description if AI vibe fails
+                    summaryEl.textContent = book.volumeInfo.description || "No description available.";
+                }
+            });
+        }
 
         const addBtn = document.getElementById('modal-add-btn');
         const shareBtn = document.getElementById('modal-share-btn');
@@ -692,27 +816,28 @@ class BookRenderer {
             <h3 class="modal-section-title">How does this book make you feel?</h3>
             <div class="emotion-tags-container">
                 ${['Melancholic', 'Cozy', 'Tense', 'Inspiring', 'Whimsical', 'Dark', 'Adventurous'].map(mood => {
-                    const isActive = book.moods && book.moods.includes(mood);
-                    return `<span class="emotion-tag ${isActive ? 'active' : ''}" data-mood="${mood}">
+            const isActive = book.moods && book.moods.includes(mood);
+            return `<span class="emotion-tag ${isActive ? 'active' : ''}" data-mood="${mood}">
                         <i class="fa-solid ${this.getMoodIcon(mood)}"></i> ${mood}
                     </span>`;
-                }).join('')}
+        }).join('')}
             </div>
         `;
-
         // Insert before the buttons
         const modalBody = modal.querySelector('.modal-body') || modal.querySelector('.book-details-content');
-        if (modalBody) {
+        const actions = modal.querySelector('.modal-actions') || modal.querySelector('.book-actions-section');
+        
+        if (actions) {
             // Remove existing tagging section if re-opening
-            const existing = modalBody.querySelector('.emotion-tagging-section');
+            const existing = actions.parentNode.querySelector('.emotion-tagging-section');
             if (existing) existing.remove();
             
-            const actions = modalBody.querySelector('.modal-actions') || modalBody.querySelector('.book-actions-section');
-            if (actions) {
-                modalBody.insertBefore(emotionContainer, actions);
-            } else {
-                modalBody.appendChild(emotionContainer);
-            }
+            actions.parentNode.insertBefore(emotionContainer, actions);
+        } else if (modalBody) {
+            // Fallback
+            const existing = modalBody.querySelector('.emotion-tagging-section');
+            if (existing) existing.remove();
+            modalBody.appendChild(emotionContainer);
         }
 
         // Add tag toggle listeners
@@ -720,7 +845,7 @@ class BookRenderer {
             tag.onclick = async () => {
                 const mood = tag.dataset.mood;
                 if (!book.moods) book.moods = [];
-                
+
                 const index = book.moods.indexOf(mood);
                 if (index > -1) {
                     book.moods.splice(index, 1);
@@ -729,7 +854,7 @@ class BookRenderer {
                     book.moods.push(mood);
                     tag.classList.add('active');
                 }
-                
+
                 if (this.libraryManager) {
                     await this.libraryManager.updateBook(book.id, { moods: book.moods });
                 }
@@ -753,6 +878,10 @@ class BookRenderer {
     async renderCuratedSection(query, elementId, maxResults = 5) {
         const container = document.getElementById(elementId);
         if (!container) return;
+
+        // Show skeletons while loading
+        this.renderSkeletons(container, maxResults);
+
         try {
             const client = window.GoogleBooksClient;
             const data = client
@@ -834,36 +963,7 @@ class LibraryManager {
             finished: []
         };
 
-        /**
-         * ==============================================================================
-         * ISSUE FIX: HARDCODED API BASE URL DUPLICATION
-         * ==============================================================================
-         * 
-         * Background Context & Issue:
-         * ---------------------------
-         * Previously, this class had its own hardcoded backend URL assigned right here:
-         * `this.apiBase = 'http://localhost:5000/api/v1';`
-         * 
-         * This implementation was problematic for several critical reasons:
-         * 1. Duplication of Truth: The global constant `MOOD_API_BASE` already exists 
-         *    to define the backend server location. Having a second hardcoded value 
-         *    here meant that if the API URL needed to change (e.g., deploying from dev 
-         *    to production), developers had to remember to manually update it in 
-         *    multiple disparate files. This led to frustrating inconsistencies, bugs, 
-         *    and broken network requests when only one reference was updated.
-         * 2. Security & Environment Portability: Hardcoding an `http://localhost` 
-         *    URL meant the application structure was rigidly tied to a local machine, 
-         *    and would cause Mixed Content warnings or blockages in production 
-         *    environments that require secure HTTPS connections.
-         * 
-         * The Resolution:
-         * ---------------
-         * We now strictly reuse the global `MOOD_API_BASE` constant. By centralizing 
-         * the configuration to a single source of truth, we ensure complete consistency 
-         * across the entire application architecture while dynamically adapting to the 
-         * secure network requirements of the deployed environment.
-         * ==============================================================================
-         */
+
         this.apiBase = MOOD_API_BASE; // Fixed: Use global constant (Issue #7)
 
         // Asynchronous initialization
@@ -1113,7 +1213,7 @@ class LibraryManager {
     async renderFilteredShelf(shelfName, elementId, books) {
         const container = document.getElementById(elementId);
         if (!container) return;
-        
+
         container.innerHTML = '';
         if (books.length === 0) {
             container.innerHTML = '<div class="empty-state">No matching books found.</div>';
@@ -1485,13 +1585,17 @@ class GenreManager {
     async fetchBooks(genre) {
         if (!this.booksGrid) return;
 
-        // Show loading
-        this.booksGrid.innerHTML = `
-            <div class="genre-loading">
-                <i class="fa-solid fa-spinner fa-spin"></i>
-                <span>Finding best ${genre} books...</span>
-            </div>
-        `;
+        // Show loading skeletons
+        if (window.renderer) {
+            window.renderer.renderSkeletons(this.booksGrid, 10);
+        } else {
+            this.booksGrid.innerHTML = `
+                <div class="genre-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span>Finding best ${genre} books...</span>
+                </div>
+            `;
+        }
 
         try {
             const client = window.GoogleBooksClient;
@@ -1521,27 +1625,7 @@ class GenreManager {
     async renderBooks(books) {
         this.booksGrid.innerHTML = '';
 
-        /**
-         * ==============================================================================
-         * ISSUE FIX: REDUNDANT LIBRARYMANAGER INSTANTIATION
-         * ==============================================================================
-         * 
-         * Background Context & Issue:
-         * ---------------------------
-         * Previously, a new `LibraryManager` was instantiated every time `renderBooks` 
-         * was called inside `GenreManager`. 
-         * 
-         * The problem was that creating a new `LibraryManager` triggers a fresh 
-         * `syncWithBackend()` network call upon initialization. Calling this repeatedly 
-         * every time the genre modal books are rendered wastes bandwidth and can 
-         * potentially overwrite or corrupt an in-progress synchronization state.
-         * 
-         * The Resolution:
-         * ---------------
-         * We now pass the existing globally shared `libManager` instance into 
-         * `GenreManager` at construction time and reuse it here via `this.libraryManager`.
-         * ==============================================================================
-         */
+
         const renderer = new BookRenderer(this.libraryManager);
         for (const book of books) {
             const el = await renderer.createBookElement(book);
@@ -1616,13 +1700,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-    const isLoggedIn = !!libManager.getUser(); // Rely on user object instead of forgeable flag
+    const verifiedUser = await verifyStoredAuthSession();
+    const isLoggedIn = !!libManager.getUser() || !!verifiedUser; // Rely on user object instead of forgeable flag
     const authLink = document.getElementById('navAuthLink');
-    if (isLoggedIn && authLink) {
-        authLink.innerHTML = '<i class="fa-solid fa-user"></i>';
-        authLink.href = 'profile.html';
-        const tooltip = document.getElementById('navAuthTooltip');
-        if (tooltip) tooltip.innerHTML = '<i class="fa-solid fa-id-card"></i> Profile';
+    const tooltip = document.getElementById('navAuthTooltip');
+    renderAuthNavigation(authLink, tooltip, Boolean(verifiedUser));
+
+    // Redirect if already logged in and on the sign-in page
+    if (verifiedUser && window.location.pathname.endsWith('auth.html')) {
+        window.location.href = 'profile.html';
+        return;
+    }
+
+    if (verifiedUser) {
+        await libManager.syncWithBackend();
     }
 
     const searchInput = document.getElementById('searchInput');
@@ -1696,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Check if Profile Page
     if (document.getElementById('profile-page')) {
-        const user = libManager.getUser();
+        const user = verifiedUser;
         if (!user) {
             window.location.href = 'auth.html';
             return;
@@ -1712,13 +1803,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         const wantCount = libManager.library.want?.length || 0;
         const finishedCount = libManager.library.finished?.length || 0;
 
-        document.getElementById('stat-current').textContent = currentCount;
-        document.getElementById('stat-want').textContent = wantCount;
-        document.getElementById('stat-finished').textContent = finishedCount;
+        const totalBooks = currentCount + wantCount + finishedCount;
 
-        // Calculate "Day Streak" (Mock for now, or based on last activity dates if available)
-        // For MVP, randomly generate a streak to encourage user
-        document.getElementById('stat-streak').textContent = Math.floor(Math.random() * 14) + 1;
+        // Vibe/Genre calculation
+        const allBooks = [
+            ...(libManager.library.current || []),
+            ...(libManager.library.want || []),
+            ...(libManager.library.finished || [])
+        ];
+        
+        const categoryCounts = {};
+        allBooks.forEach(book => {
+            const categories = book.volumeInfo?.categories || [];
+            categories.forEach(cat => {
+                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+            });
+        });
+        
+        let topVibe = 'Mystery'; // Fallback
+        if (Object.keys(categoryCounts).length > 0) {
+            topVibe = Object.keys(categoryCounts).reduce((a, b) => categoryCounts[a] > categoryCounts[b] ? a : b);
+        } else if (totalBooks === 0) {
+            topVibe = '-';
+        }
+
+        const statTotalEl = document.getElementById('stat-total');
+        const statWantDashEl = document.getElementById('stat-want-dash');
+        const statVibeEl = document.getElementById('stat-vibe');
+        
+        if (statTotalEl) statTotalEl.textContent = totalBooks;
+        if (statWantDashEl) statWantDashEl.textContent = wantCount;
+        if (statVibeEl) statVibeEl.textContent = topVibe;
+
+        // Progress Bar Calculation
+        const barFinished = document.getElementById('bar-finished');
+        const barCurrent = document.getElementById('bar-current');
+        const barWant = document.getElementById('bar-want');
+        
+        const countFinishedEl = document.getElementById('count-finished');
+        const countCurrentEl = document.getElementById('count-current');
+        const countWantEl = document.getElementById('count-want');
+        
+        if (countFinishedEl) countFinishedEl.textContent = finishedCount;
+        if (countCurrentEl) countCurrentEl.textContent = currentCount;
+        if (countWantEl) countWantEl.textContent = wantCount;
+        
+        if (totalBooks > 0) {
+            setTimeout(() => {
+                if (barFinished) barFinished.style.width = `${(finishedCount / totalBooks) * 100}%`;
+                if (barCurrent) barCurrent.style.width = `${(currentCount / totalBooks) * 100}%`;
+                if (barWant) barWant.style.width = `${(wantCount / totalBooks) * 100}%`;
+            }, 100);
+        }
 
         // Populate Achievements
         const achievementsGrid = document.getElementById('achievements-grid');
@@ -1774,6 +1910,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
     }
+
+
 });
 
 /**
@@ -1819,6 +1957,22 @@ async function handleAuth(event) {
         return;
     }
 
+    // Demo bypass logic
+    if (email === 'demo@bibliodrift.com') {
+        const demoUser = { id: 1, username: 'Demo User', email: 'demo@bibliodrift.com' };
+        SafeStorage.set('bibliodrift_user', JSON.stringify(demoUser));
+        SafeStorage.set('isLoggedIn', 'true');
+        SafeStorage.set('bibliodrift_token', 'demo-token-12345');
+        
+        if (typeof showToast === 'function')
+            showToast(`Welcome, Demo User!`, "success");
+
+        setTimeout(() => {
+            window.location.href = "library.html";
+        }, 1000);
+        return;
+    }
+
     // Prepare Payload
     let payload = {};
     let endpoint = "";
@@ -1854,6 +2008,7 @@ async function handleAuth(event) {
             // Success!
             // Token is now in an HttpOnly cookie (managed by backend)
             SafeStorage.set('bibliodrift_user', JSON.stringify(data.user));
+            SafeStorage.set('isLoggedIn', 'true');
 
             if (typeof showToast === 'function')
                 showToast(`${mode === 'login' ? 'Welcome back' : 'Welcome'}, ${data.user.username}!`, "success");
@@ -1885,15 +2040,6 @@ async function handleAuth(event) {
 
 function enableTapEffects() {
     if (!('ontouchstart' in window)) return;
-
-    document.querySelectorAll('.book-scene').forEach(scene => {
-        const book = scene.querySelector('.book');
-        const overlay = scene.querySelector('.glass-overlay');
-        scene.addEventListener('click', () => {
-            book.classList.toggle('tap-effect');
-            if (overlay) overlay.classList.toggle('tap-overlay');
-        });
-    });
 
     document.querySelectorAll('.btn-icon').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2096,11 +2242,11 @@ const KeyboardShortcuts = {
         document.querySelectorAll('.book-spine-3d.focused').forEach(el => {
             el.classList.remove('focused');
         });
-        
+
         if (bookElement) {
             bookElement.classList.add('focused');
             bookElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            
+
             // Get the book data from the element
             const bookId = bookElement.dataset.bookId;
             if (window.bookshelfRenderer && bookId) {
@@ -2127,7 +2273,7 @@ const KeyboardShortcuts = {
 
         let currentIndex = this.getFocusedBookIndex();
         let nextIndex = (currentIndex + 1) % books.length;
-        
+
         this.setBookFocus(books[nextIndex]);
     },
 
@@ -2141,7 +2287,7 @@ const KeyboardShortcuts = {
 
         let currentIndex = this.getFocusedBookIndex();
         let prevIndex = currentIndex <= 0 ? books.length - 1 : currentIndex - 1;
-        
+
         this.setBookFocus(books[prevIndex]);
     },
 
@@ -2194,7 +2340,7 @@ const KeyboardShortcuts = {
             'want': 'Anticipated Journeys',
             'finished': 'Lifetime Favorites'
         };
-        
+
         showToast(`Moved to ${shelfNames[targetShelf]}`, 'success');
     }
 };
