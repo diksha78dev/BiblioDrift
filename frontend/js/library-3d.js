@@ -262,6 +262,28 @@ class BookshelfRenderer3D {
         this.sortCriteria = 'title'; // Default sort
         this.filterCriteria = 'all'; // Default filter
 
+        // Create live region for screen reader announcements
+        this.liveRegion = document.createElement('div');
+        this.liveRegion.setAttribute('aria-live', 'polite');
+        this.liveRegion.setAttribute('aria-atomic', 'true');
+        this.liveRegion.className = 'sr-only';
+        this.liveRegion.id = 'sr-announcements';
+        document.body.appendChild(this.liveRegion);
+
+        // Add accessibility attributes to tooltip
+        if (this.tooltip) {
+            this.tooltip.setAttribute('role', 'region');
+            this.tooltip.setAttribute('aria-label', 'Book preview tooltip');
+            this.tooltip.setAttribute('aria-live', 'polite');
+        }
+
+        // Add accessibility attributes to modal
+        if (this.modal) {
+            this.modal.setAttribute('role', 'dialog');
+            this.modal.setAttribute('aria-modal', 'true');
+            this.modal.setAttribute('aria-labelledby', 'modal-title');
+        }
+
         this.init();
     }
 
@@ -355,6 +377,16 @@ class BookshelfRenderer3D {
         const container = document.getElementById(containerId);
         if (!container) return;
 
+        // Set accessibility attributes on container
+        container.setAttribute('role', 'region');
+        const shelfLabels = {
+            'current': 'Currently Immersed - Books currently being read',
+            'want': 'Anticipated Journeys - Books to read',
+            'finished': 'Lifetime Favorites - Books finished'
+        };
+        container.setAttribute('aria-label', shelfLabels[shelfType] || `${shelfType} books shelf`);
+        container.setAttribute('aria-live', 'polite');
+
         // Fetch real library data
         const storageKey = 'bibliodrift_library';
         const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {
@@ -397,6 +429,7 @@ class BookshelfRenderer3D {
 
         if (!books || books.length === 0) {
             container.innerHTML = '<div class="empty-shelf-3d">No books yet... Start your collection!</div>';
+            container.setAttribute('aria-label', `${shelfLabels[shelfType]} - empty`);
             return;
         }
 
@@ -406,6 +439,9 @@ class BookshelfRenderer3D {
             const bookSpine = this.createBookSpine(book, index, shelfType);
             container.appendChild(bookSpine);
         });
+
+        // Update aria-label with book count
+        container.setAttribute('aria-label', `${shelfLabels[shelfType]} - ${books.length} book${books.length !== 1 ? 's' : ''}`);
 
         // Add Shelf Drop Zone Logic
         // Remove old listeners? It's hard without named functions. 
@@ -450,6 +486,8 @@ class BookshelfRenderer3D {
             e.dataTransfer.setData('sourceShelf', shelfType);
             e.dataTransfer.effectAllowed = 'move';
             spine.style.opacity = '0.5';
+            // Announce to screen readers
+            this.announceToScreenReader(`Started dragging ${book.title}`);
         });
         
         spine.addEventListener('dragend', (e) => {
@@ -482,16 +520,22 @@ class BookshelfRenderer3D {
         spine.classList.add(traits.fontClass);
         if (traits.titleModifier) spine.classList.add(traits.titleModifier);
 
+        // Accessibility attributes
+        spine.setAttribute('role', 'button');
+        spine.setAttribute('tabindex', '0');
+        spine.setAttribute('aria-label', `${book.title} by ${book.author}. Rating: ${book.rating} stars. Click to view details or drag to move to another shelf.`);
+        spine.setAttribute('aria-pressed', 'false');
+
         spine.innerHTML = `
             <div class="spine-face" style="background-color: ${traits.spineColor}; color: ${traits.textColor};">
-                <span class="spine-title">${book.title}</span>
-                <span class="spine-author">${book.author ? book.author.split(' ').pop() : ''}</span>
-                ${traits.pattern.includes('ornament') ? '<div class="spine-pattern-ornament"></div>' : ''}
-                ${traits.pattern.includes('bands') ? '<div class="spine-pattern-bands"></div>' : ''}
-                ${traits.pattern.includes('frame') ? '<div class="spine-pattern-frame"></div>' : ''}
+                <span class="spine-title" aria-hidden="true">${book.title}</span>
+                <span class="spine-author" aria-hidden="true">${book.author ? book.author.split(' ').pop() : ''}</span>
+                ${traits.pattern.includes('ornament') ? '<div class="spine-pattern-ornament" aria-hidden="true"></div>' : ''}
+                ${traits.pattern.includes('bands') ? '<div class="spine-pattern-bands" aria-hidden="true"></div>' : ''}
+                ${traits.pattern.includes('frame') ? '<div class="spine-pattern-frame" aria-hidden="true"></div>' : ''}
             </div>
-            <div class="book-edge"></div>
-            <div class="book-top" style="--spine-color: ${traits.spineColor};"></div>
+            <div class="book-edge" aria-hidden="true"></div>
+            <div class="book-top" style="--spine-color: ${traits.spineColor};" aria-hidden="true"></div>
         `;
 
         // Event listeners
@@ -499,6 +543,25 @@ class BookshelfRenderer3D {
         spine.addEventListener('mousemove', (e) => this.moveTooltip(e));
         spine.addEventListener('mouseleave', () => this.hideTooltip());
         spine.addEventListener('click', () => this.openModal(book));
+
+        // Keyboard navigation
+        spine.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.openModal(book);
+                spine.setAttribute('aria-pressed', 'true');
+            }
+        });
+
+        // Focus management for keyboard navigation
+        spine.addEventListener('focus', () => {
+            this.showTooltip({ clientX: spine.getBoundingClientRect().left, clientY: spine.getBoundingClientRect().top }, book);
+        });
+
+        spine.addEventListener('blur', () => {
+            this.hideTooltip();
+            spine.setAttribute('aria-pressed', 'false');
+        });
 
         return spine;
     }
@@ -591,9 +654,11 @@ class BookshelfRenderer3D {
 
         // Update tooltip content
         document.getElementById('tooltip-cover').src = book.cover;
+        document.getElementById('tooltip-cover').setAttribute('alt', `Cover of ${book.title}`);
         document.getElementById('tooltip-title').textContent = book.title;
         document.getElementById('tooltip-author').textContent = `by ${book.author}`;
         document.getElementById('tooltip-stars').textContent = this.getStarRating(book.rating);
+        document.getElementById('tooltip-stars').setAttribute('aria-label', `${book.rating} out of 5 stars`);
         document.getElementById('tooltip-rating-text').textContent = book.rating.toFixed(1);
         document.getElementById('tooltip-description').textContent = book.description.substring(0, 150) + '...';
 
@@ -603,6 +668,8 @@ class BookshelfRenderer3D {
         // Show tooltip with small delay
         setTimeout(() => {
             this.tooltip.classList.add('visible');
+            // Announce to screen readers
+            this.announceToScreenReader(`Book: ${book.title} by ${book.author}. ${book.rating} stars. ${book.description.substring(0, 100)}...`);
         }, 100);
     }
 
@@ -647,7 +714,10 @@ class BookshelfRenderer3D {
 
         // 2. Populate Cover
         const coverImg = document.getElementById('modal-cover');
-        if (coverImg) coverImg.src = book.cover;
+        if (coverImg) {
+            coverImg.src = book.cover;
+            coverImg.setAttribute('alt', `Cover of ${book.title} by ${book.author}`);
+        }
 
         // 3. Style the 3D Book (Spine & Back)
         const spineColor = book.spineColor || '#5d4037';
@@ -661,6 +731,7 @@ class BookshelfRenderer3D {
 
         if (spineFace) {
             spineFace.style.backgroundColor = spineColor;
+            spineFace.setAttribute('aria-label', `Book spine: ${book.title}`);
             // Add title to spine if element exists
             // (We didn't add a span inside .face-spine in HTML explicitly but let's check if we want to)
         }
@@ -686,6 +757,7 @@ class BookshelfRenderer3D {
         if (descriptionText) {
             descriptionText.textContent = book.description;
             descriptionText.style.color = textColor;
+            descriptionText.setAttribute('aria-label', `Description: ${book.description}`);
         }
 
         // Synopsis Title Color
@@ -701,9 +773,18 @@ class BookshelfRenderer3D {
         const scoreEl = document.getElementById('modal-rating-score');
         const countEl = document.getElementById('modal-rating-count');
 
-        if (titleEl) titleEl.textContent = book.title;
-        if (authorEl) authorEl.textContent = book.author; // Removed "by" prefix to match design
-        if (starsEl) starsEl.textContent = this.getStarRating(book.rating);
+        if (titleEl) {
+            titleEl.textContent = book.title;
+            titleEl.setAttribute('id', 'modal-title');
+        }
+        if (authorEl) {
+            authorEl.textContent = book.author; // Removed "by" prefix to match design
+            authorEl.setAttribute('aria-label', `Author: ${book.author}`);
+        }
+        if (starsEl) {
+            starsEl.textContent = this.getStarRating(book.rating);
+            starsEl.setAttribute('aria-label', `${book.rating} out of 5 stars`);
+        }
         if (scoreEl) scoreEl.textContent = book.rating.toFixed(1);
         if (countEl) countEl.textContent = `(${book.ratingCount} ratings)`;
 
@@ -711,7 +792,7 @@ class BookshelfRenderer3D {
         const categoriesContainer = document.getElementById('modal-categories');
         if (categoriesContainer && book.categories) {
             categoriesContainer.innerHTML = book.categories.map(cat =>
-                `<span class="category-tag">${cat}</span>`
+                `<span class="category-tag" aria-label="Category: ${cat}">${cat}</span>`
             ).join('');
         }
 
@@ -719,10 +800,10 @@ class BookshelfRenderer3D {
         const reviewsContainer = document.getElementById('modal-reviews');
         if (reviewsContainer && book.reviews) {
             reviewsContainer.innerHTML = book.reviews.map(review => `
-                <div class="review-item">
+                <div class="review-item" aria-label="Review by ${review.name}, ${review.rating} stars">
                     <div class="review-header">
                         <span class="reviewer-name">${review.name}</span>
-                        <span class="review-rating">${this.getStarRating(review.rating)}</span>
+                        <span class="review-rating" aria-label="Rating: ${review.rating} out of 5 stars">${this.getStarRating(review.rating)}</span>
                     </div>
                     <p class="review-text">"${review.text}"</p>
                 </div>
@@ -735,6 +816,7 @@ class BookshelfRenderer3D {
         const removeBtn = document.getElementById('modal-remove-btn');
         
         if (shelfSelect) {
+            shelfSelect.setAttribute('aria-label', 'Move book to shelf');
             // Find current shelf
             const storageKey = 'bibliodrift_library';
             const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
@@ -755,13 +837,14 @@ class BookshelfRenderer3D {
                 const newShelf = e.target.value;
                 this.moveBook(book.id, currentShelf, newShelf);
                 currentShelf = newShelf; // Update local tracker
-                
+                this.announceToScreenReader(`Book moved to ${newShelf} shelf`);
                 // Close modal after move? Optional. Let's keep it open but maybe show feedback.
                 // For now, shelf re-render happens in background.
             });
         }
         
         if (removeBtn) {
+            removeBtn.setAttribute('aria-label', 'Remove book from library');
             // Remove old listeners
             const newRemoveBtn = removeBtn.cloneNode(true);
             removeBtn.parentNode.replaceChild(newRemoveBtn, removeBtn);
@@ -776,6 +859,7 @@ class BookshelfRenderer3D {
 
         const shareBtn = document.getElementById('modal-share-btn-lib');
         if (shareBtn) {
+            shareBtn.setAttribute('aria-label', 'Share book information');
             const newShareBtn = shareBtn.cloneNode(true);
             shareBtn.parentNode.replaceChild(newShareBtn, shareBtn);
 
@@ -787,19 +871,29 @@ class BookshelfRenderer3D {
                     // Temporarily change button text to show success
                     const originalHTML = newShareBtn.innerHTML;
                     newShareBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                    this.announceToScreenReader('Book information copied to clipboard');
                     setTimeout(() => {
                         newShareBtn.innerHTML = originalHTML;
                     }, 2000);
                 }).catch(err => {
                     console.error('Failed to copy text: ', err);
+                    this.announceToScreenReader('Failed to copy book information');
                 });
             });
         }
 
-        // Show modal
+        // Show modal and manage focus
         if (this.modal) {
             this.modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            
+            // Focus on close button for better keyboard navigation
+            const closeBtn = document.getElementById('modal-close-btn');
+            if (closeBtn) {
+                setTimeout(() => closeBtn.focus(), 100);
+            }
+
+            this.announceToScreenReader(`Opened book details for ${book.title} by ${book.author}`);
         }
     }
 
@@ -820,18 +914,33 @@ class BookshelfRenderer3D {
         // Book flip interaction
         const bookObject = document.getElementById('book-3d-object');
         if (bookObject) {
+            bookObject.setAttribute('role', 'button');
+            bookObject.setAttribute('tabindex', '0');
+            bookObject.setAttribute('aria-label', 'Book 3D object. Press Enter or Space to flip the book. Press click to view back cover.');
+            
             bookObject.addEventListener('click', (e) => {
                 // If user is selecting text (e.g. description), don't flip
                 if (window.getSelection().toString().length > 0) {
                     return;
                 }
                 bookObject.classList.toggle('flipped');
+                const isFlipped = bookObject.classList.contains('flipped');
+                this.announceToScreenReader(isFlipped ? 'Book flipped to back cover' : 'Book flipped to front cover');
+            });
+
+            // Keyboard support for book flip
+            bookObject.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    bookObject.click();
+                }
             });
         }
 
         // Close button
         const closeBtn = document.getElementById('modal-close-btn');
         if (closeBtn) {
+            closeBtn.setAttribute('aria-label', 'Close book details');
             // Remove lingering clones to prevent multiple listeners if re-initialized
             const newCloseBtn = closeBtn.cloneNode(true);
             closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
@@ -840,6 +949,14 @@ class BookshelfRenderer3D {
                 e.preventDefault();
                 e.stopPropagation();
                 this.closeModal();
+            });
+
+            // Keyboard support
+            newCloseBtn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.closeModal();
+                }
             });
         }
 
@@ -863,6 +980,7 @@ class BookshelfRenderer3D {
         // Add to library button logic
         const addBtn = document.getElementById('modal-add-btn');
         if (addBtn) {
+            addBtn.setAttribute('aria-label', 'Add book to library');
             const newAddBtn = addBtn.cloneNode(true);
             addBtn.parentNode.replaceChild(newAddBtn, addBtn);
 
@@ -870,16 +988,19 @@ class BookshelfRenderer3D {
                 newAddBtn.innerHTML = '<i class="fa-solid fa-check"></i> Added!';
                 newAddBtn.style.background = '#4CAF50';
                 newAddBtn.style.color = '#fff';
+                newAddBtn.setAttribute('aria-label', 'Book added to library');
 
                 // Store in localStorage (integrate with existing library system)
                 if (this.currentBook) {
                     this.addToLibrary(this.currentBook);
+                    this.announceToScreenReader(`${this.currentBook.title} added to your library`);
                 }
 
                 setTimeout(() => {
                     newAddBtn.innerHTML = '<i class="fa-regular fa-heart"></i> Add to Library';
                     newAddBtn.style.background = '';
                     newAddBtn.style.color = '';
+                    newAddBtn.setAttribute('aria-label', 'Add book to library');
                 }, 2000);
             });
         }
@@ -887,6 +1008,7 @@ class BookshelfRenderer3D {
         // Mark as read button logic
         const readBtn = document.getElementById('modal-read-btn');
         if (readBtn) {
+            readBtn.setAttribute('aria-label', 'Mark this book as read');
             const newReadBtn = readBtn.cloneNode(true);
             readBtn.parentNode.replaceChild(newReadBtn, readBtn);
 
@@ -894,11 +1016,17 @@ class BookshelfRenderer3D {
                 newReadBtn.innerHTML = '<i class="fa-solid fa-check-double"></i> Marked!';
                 newReadBtn.style.background = 'var(--wood-light)';
                 newReadBtn.style.color = 'white';
+                newReadBtn.setAttribute('aria-label', 'Book marked as read');
+                
+                if (this.currentBook) {
+                    this.announceToScreenReader(`${this.currentBook.title} marked as read`);
+                }
 
                 setTimeout(() => {
                     newReadBtn.innerHTML = '<i class="fa-solid fa-check"></i> Mark as Read';
                     newReadBtn.style.background = '';
                     newReadBtn.style.color = '';
+                    newReadBtn.setAttribute('aria-label', 'Mark this book as read');
                 }, 2000);
             });
         }
@@ -986,7 +1114,14 @@ class BookshelfRenderer3D {
         if (removed) {
             localStorage.setItem(storageKey, JSON.stringify(localLibrary));
             this.refreshShelves();
+            this.announceToScreenReader(`Book removed from library`);
             console.log(`Removed book ${bookId}`);
+        }
+    }
+
+    announceToScreenReader(message) {
+        if (this.liveRegion) {
+            this.liveRegion.textContent = message;
         }
     }
 
