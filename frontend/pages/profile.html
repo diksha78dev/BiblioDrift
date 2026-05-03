@@ -68,26 +68,37 @@
                 </div>
             </div>
 
-            <div class="profile-stats-container">
-                <div class="profile-stat-box">
-                    <i class="fa-solid fa-book-open-reader"></i>
-                    <h3 id="stat-current">0</h3>
-                    <span>Reading</span>
+            <div class="reading-stats-dashboard">
+                <div class="profile-stats-container">
+                    <div class="profile-stat-box">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <h3 id="stat-total">0</h3>
+                        <span>Total Books</span>
+                    </div>
+                    <div class="profile-stat-box">
+                        <i class="fa-solid fa-list-ul"></i>
+                        <h3 id="stat-want-dash">0</h3>
+                        <span>Wishlist</span>
+                    </div>
+                    <div class="profile-stat-box">
+                        <i class="fa-solid fa-star"></i>
+                        <h3 id="stat-vibe" style="font-size: 1.2rem; margin: 1rem 0; word-break: break-word; min-height: 1.5rem;">-</h3>
+                        <span>Top Vibe</span>
+                    </div>
                 </div>
-                <div class="profile-stat-box">
-                    <i class="fa-solid fa-check-double"></i>
-                    <h3 id="stat-finished">0</h3>
-                    <span>Finished</span>
-                </div>
-                <div class="profile-stat-box">
-                    <i class="fa-solid fa-bookmark"></i>
-                    <h3 id="stat-want">0</h3>
-                    <span>To Read</span>
-                </div>
-                <div class="profile-stat-box">
-                    <i class="fa-solid fa-fire"></i>
-                    <h3 id="stat-streak">3</h3>
-                    <span>Day Streak</span>
+
+                <div class="progress-breakdown profile-stat-box">
+                    <h3 class="progress-title"><i class="fa-solid fa-chart-bar"></i> Reading Progress</h3>
+                    <div class="progress-bar-container">
+                        <div id="bar-finished" class="progress-segment finished" style="width: 0%;"></div>
+                        <div id="bar-current" class="progress-segment current" style="width: 0%;"></div>
+                        <div id="bar-want" class="progress-segment want" style="width: 0%;"></div>
+                    </div>
+                    <div class="progress-legend">
+                        <span><i class="fa-solid fa-circle legend-finished"></i> Read (<span id="count-finished">0</span>)</span>
+                        <span><i class="fa-solid fa-circle legend-current"></i> Reading (<span id="count-current">0</span>)</span>
+                        <span><i class="fa-solid fa-circle legend-want"></i> Want to Read (<span id="count-want">0</span>)</span>
+                    </div>
                 </div>
             </div>
         </section>
