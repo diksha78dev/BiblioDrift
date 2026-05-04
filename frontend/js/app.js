@@ -927,6 +927,86 @@ class BookRenderer {
         }
     }
 
+    async renderMoodCategorySection(categoryConfig, elementId, maxResults = 5) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
+
+        this.renderSkeletons(container, maxResults);
+
+        try {
+            const res = await fetch(`${MOOD_API_BASE}/category-books`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    category: categoryConfig.category,
+                    vibe_description: categoryConfig.vibeDescription,
+                    count: maxResults
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error(`Category API Error: ${res.status}`);
+            }
+
+            const payload = await res.json();
+            const categoryBooks = payload?.data?.books || [];
+
+            if (categoryBooks.length === 0) {
+                throw new Error(`No books returned for category: ${categoryConfig.category}`);
+            }
+
+            const resolvedBooks = await this.resolveCategoryBooks(categoryBooks);
+            if (resolvedBooks.length > 0) {
+                await this.renderBookCards(container, resolvedBooks.slice(0, maxResults));
+                return;
+            }
+
+            throw new Error(`Could not resolve Google Books matches for category: ${categoryConfig.category}`);
+        } catch (err) {
+            console.error(`Failed to load category shelf "${categoryConfig.category}"`, err);
+            await this.renderCuratedSection(categoryConfig.fallbackQuery, elementId, maxResults);
+        }
+    }
+
+    async resolveCategoryBooks(categoryBooks) {
+        const resolvedBooks = [];
+
+        for (const item of categoryBooks) {
+            const title = String(item?.title || '').trim();
+            const author = String(item?.author || '').trim();
+            if (!title) continue;
+
+            const searchQuery = author
+                ? `intitle:${title} inauthor:${author}`
+                : `intitle:${title}`;
+
+            try {
+                const client = window.GoogleBooksClient;
+                const data = client
+                    ? await client.fetchVolumes(searchQuery, { maxResults: 1, extraParams: '&printType=books' })
+                    : await (async () => {
+                        const keyParam = GOOGLE_API_KEY ? `&key=${GOOGLE_API_KEY}` : '';
+                        const res = await fetch(`${API_BASE}?q=${encodeURIComponent(searchQuery)}&maxResults=1&printType=books${keyParam}`);
+                        if (!res.ok) {
+                            throw new Error(`Google Books API Error: ${res.status}`);
+                        }
+                        return await res.json();
+                    })();
+
+                const matchedBook = data?.items?.[0];
+                if (matchedBook) {
+                    matchedBook.categoryReason = item.reason || '';
+                    resolvedBooks.push(matchedBook);
+                }
+            } catch (error) {
+                console.warn(`Failed to resolve category book "${title}"`, error);
+            }
+        }
+
+        return resolvedBooks;
+    }
+
     async renderBookCards(container, books) {
         container.innerHTML = '';
         if (!books || books.length === 0) {
@@ -1760,15 +1840,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderer.renderCuratedSection(query, 'search-results', 20);
     } else if (document.getElementById('row-rainy')) {
         console.log('📚 Initializing Curated Discovery Sections...');
+        const discoveryShelves = [
+            { type: 'query', query: 'subject:mystery atmosphere', elementId: 'row-rainy' },
+            { type: 'query', query: 'authors:arundhati roy|subject:india', elementId: 'row-indian' },
+            { type: 'query', query: 'subject:classic fiction', elementId: 'row-classics' },
+            {
+                type: 'category',
+                elementId: 'row-dark-academia',
+                category: 'Dark Academia',
+                vibeDescription: 'gothic, intellectual, melancholic, and candlelit stories set around obsession, old libraries, secret societies, and campus unease',
+                fallbackQuery: 'subject:gothic fiction subject:campus'
+            },
+            { type: 'query', query: 'subject:fiction', elementId: 'row-fiction' }
+        ];
         (async () => {
             try {
-                await renderer.renderCuratedSection('subject:mystery atmosphere', 'row-rainy');
-                await delay(500);
-                await renderer.renderCuratedSection('authors:arundhati roy|subject:india', 'row-indian');
-                await delay(500);
-                await renderer.renderCuratedSection('subject:classic fiction', 'row-classics');
-                await delay(500);
-                await renderer.renderCuratedSection('subject:fiction', 'row-fiction');
+                for (const shelf of discoveryShelves) {
+                    if (shelf.type === 'category') {
+                        await renderer.renderMoodCategorySection(shelf, shelf.elementId);
+                    } else {
+                        await renderer.renderCuratedSection(shelf.query, shelf.elementId);
+                    }
+                    await delay(500);
+                }
                 console.log('✅ Discovery shelves populated.');
             } catch (err) {
                 console.error('❌ Critical error during shelf initialization:', err);
