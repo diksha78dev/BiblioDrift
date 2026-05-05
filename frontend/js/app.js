@@ -686,7 +686,7 @@ class BookRenderer {
             });
             if (res.ok) {
                 const data = await res.json();
-                return data.data?.blurb || null;
+                return data.data?.vibe || null;
             }
         } catch (e) {
             // Silently fail to use fallback
@@ -700,7 +700,7 @@ class BookRenderer {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ title, author, description })
+                body: JSON.stringify({ bookId, title, author, description, categories })
             });
             if (res.ok) {
                 const data = await res.json();
