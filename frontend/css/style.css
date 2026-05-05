@@ -790,7 +790,28 @@ main {
 
 /* Utilities */
 .hidden {
-    display: none;
+    display: none !important;
+}
+
+/* --- Constellation View --- */
+.constellation-container {
+    width: 100%;
+    min-height: 600px;
+    margin-top: 2rem;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    animation: fadeIn 0.5s ease;
+}
+
+.view-toggles button {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-toggles .active-view {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transform: scale(1.05);
 }
 
 .fade-in {
