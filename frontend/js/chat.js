@@ -7,6 +7,7 @@ class ChatInterface {
         this.chatInput = document.getElementById('chatInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.quickSuggestions = document.getElementById('quickSuggestions');
+        this.quickSuggestionsList = this.quickSuggestions ? this.quickSuggestions.querySelector('.suggestions-list') : null;
         
         this.conversationHistory = [];
         this.isTyping = false;
@@ -20,6 +21,9 @@ class ChatInterface {
         
         // Set up event listeners
         this.setupEventListeners();
+        
+        // Initialize dynamic suggestion chips
+        this.updateSuggestionChips();
         
         // Initialize with welcome message if no history
         if (this.conversationHistory.length === 0) {
@@ -162,10 +166,8 @@ Tell me what kind of vibe you're looking for - maybe something cozy for a rainy 
         this.chatInput.value = '';
         this.adjustTextareaHeight();
         
-        // Hide quick suggestions after first message
-        if (this.quickSuggestions) {
-            this.quickSuggestions.style.display = 'none';
-        }
+        // Update suggestion chips after a message so they become context-aware
+        this.updateSuggestionChips();
         
         // Show typing indicator
         this.showTypingIndicator();
@@ -218,7 +220,7 @@ Tell me what kind of vibe you're looking for - maybe something cozy for a rainy 
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    history: this.conversationHistory.slice(-5) // Only send last 5 messages for context
+                    history: this.conversationHistory.slice(-10) // Send last 10 messages for better session memory
                 })
             });
             
@@ -428,15 +430,41 @@ Tell me what kind of vibe you're looking for - maybe something cozy for a rainy 
         
         const info = document.createElement('div');
         info.className = 'book-rec-info';
-        
+
         const title = document.createElement('h4');
         title.textContent = book.volumeInfo?.title || 'Unknown Title';
-        
+
         const author = document.createElement('p');
         author.textContent = book.volumeInfo?.authors?.[0] || 'Unknown Author';
-        
+
+        // Add rating if available
+        if (book.volumeInfo?.averageRating) {
+            const rating = document.createElement('div');
+            rating.className = 'book-rec-rating';
+            rating.textContent = `★ ${book.volumeInfo.averageRating}`;
+            info.appendChild(rating);
+        }
+
+        // Actions: details and add to library
+        const actions = document.createElement('div');
+        actions.className = 'book-rec-actions';
+
+        const detailsBtn = document.createElement('button');
+        detailsBtn.className = 'btn btn-link';
+        detailsBtn.textContent = 'Details';
+        detailsBtn.onclick = (e) => { e.stopPropagation(); this.showBookDetails(book); };
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-primary';
+        addBtn.textContent = 'Add to Library';
+        addBtn.onclick = (e) => { e.stopPropagation(); this.addToLibrary(book); };
+
+        actions.appendChild(detailsBtn);
+        actions.appendChild(addBtn);
+
         info.appendChild(title);
         info.appendChild(author);
+        info.appendChild(actions);
         
         item.appendChild(cover);
         item.appendChild(info);
@@ -483,10 +511,11 @@ Tell me what kind of vibe you're looking for - maybe something cozy for a rainy 
             <div class="message-avatar">
                 <i class="fas fa-user-tie"></i>
             </div>
-            <div class="typing-bubble">
+            <div class="typing-bubble" aria-live="polite">
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
+                <div class="typing-text">Thinking...</div>
             </div>
         `;
         
@@ -709,6 +738,94 @@ Tell me what kind of vibe you're looking for - maybe something cozy for a rainy 
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    extractMoodKeywordsFromHistory() {
+        try {
+            const textBlob = this.conversationHistory.map(m => (m.content || '')).join(' ');
+            const keywords = [];
+            const moodHints = ['cozy','comfort','romance','mystery','thriller','dark','uplifting','melancholy','adventure','fantasy','science fiction','sci-fi','historical','literary'];
+            const lower = textBlob.toLowerCase();
+            moodHints.forEach(h => { if (lower.includes(h)) keywords.push(h); });
+            return Array.from(new Set(keywords)).slice(0,4);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    createSuggestionButton(text, icon) {
+        const btn = document.createElement('button');
+        btn.className = 'suggestion-btn';
+        if (icon) btn.innerHTML = `<i class="fa-solid ${icon}"></i> ${text}`;
+        else btn.textContent = text;
+        btn.onclick = () => sendQuickMessage(text);
+        return btn;
+    }
+
+    updateSuggestionChips() {
+        if (!this.quickSuggestions || !this.quickSuggestionsList) return;
+        // Clear existing
+        this.quickSuggestionsList.innerHTML = '';
+
+        // Build dynamic suggestions from history
+        const kws = this.extractMoodKeywordsFromHistory();
+        const chips = [];
+        if (kws.length) {
+            kws.forEach(k => chips.push({text: `I'm in the mood for ${k}`, icon: 'fa-mug-hot'}));
+        }
+
+        // If no keywords, provide context-aware defaults
+        if (chips.length === 0) {
+            chips.push({text: 'I want something cozy and comforting', icon: 'fa-mug-hot'});
+            chips.push({text: 'Looking for a thrilling mystery', icon: 'fa-magnifying-glass'});
+            chips.push({text: 'Something romantic and heartwarming', icon: 'fa-heart'});
+            chips.push({text: 'I need an escape to another world', icon: 'fa-wand-sparkles'});
+        }
+
+        chips.slice(0,6).forEach(c => {
+            const btn = this.createSuggestionButton(c.text, c.icon.replace('fa-', 'fa-') );
+            this.quickSuggestionsList.appendChild(btn);
+        });
+
+        this.quickSuggestions.style.display = 'block';
+    }
+
+    async addToLibrary(book) {
+        try {
+            const user = window.currentUser || null;
+            if (!user) {
+                alert('Sign in to add books to your library.');
+                return;
+            }
+
+            const payload = {
+                user_id: user.id,
+                google_books_id: book.id,
+                title: book.volumeInfo?.title || '',
+                authors: book.volumeInfo?.authors || [],
+                thumbnail: book.volumeInfo?.imageLinks?.thumbnail || '' ,
+                shelf_type: 'owned'
+            };
+
+            const resp = await fetch((window.MOOD_API_BASE || '/api/v1') + '/library', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+
+            if (resp.ok) {
+                alert('Added to your library');
+            } else if (resp.status === 401) {
+                alert('Please sign in to add books to your library.');
+            } else {
+                const data = await resp.json().catch(()=>({}));
+                alert((data && data.message) || 'Failed to add book to library');
+            }
+        } catch (e) {
+            console.error('Add to library failed', e);
+            alert('Failed to add book to library');
+        }
     }
 }
 

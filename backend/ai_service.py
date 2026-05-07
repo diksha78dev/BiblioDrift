@@ -688,6 +688,67 @@ def get_book_mood_tags_safe(title: str, author: str = "") -> list:
     
     return []
 
+
+def build_session_memory(conversation_history: list, max_items: int = 12) -> str:
+    """
+    Build a lightweight session memory summary from recent conversation history.
+    This function extracts user preferences, repeated moods, favorite genres/authors,
+    and recent book mentions to include as context for follow-up responses.
+
+    The summary is intentionally conservative and deterministic (no extra LLM calls),
+    so it can be used safely in prompts.
+    """
+    if not conversation_history:
+        return ""
+
+    recent = conversation_history[-max_items:]
+    prefs = set()
+    authors = set()
+    titles = set()
+
+    mood_keywords = [
+        'cozy', 'comfort', 'romance', 'mystery', 'thriller', 'dark', 'uplifting',
+        'melancholy', 'adventure', 'fantasy', 'science fiction', 'sci-fi', 'historical',
+        'literary', 'non-fiction', 'biography', 'memoir'
+    ]
+
+    for msg in recent:
+        try:
+            text = ''
+            if isinstance(msg, dict):
+                text = (msg.get('content') or '')
+            else:
+                text = str(msg)
+
+            text_low = text.lower()
+            # detect mood keywords
+            for k in mood_keywords:
+                if k in text_low:
+                    prefs.add(k)
+
+            # detect quoted titles (simple heuristic)
+            import re
+            for match in re.findall(r'"([^"]+)"', text):
+                if len(match.split()) <= 8:
+                    titles.add(match.strip())
+
+            # detect 'by <Author>' patterns
+            for match in re.findall(r'by\s+([A-Z][\w\s\-\.]+)', text):
+                authors.add(match.strip())
+
+        except Exception:
+            continue
+
+    parts = []
+    if prefs:
+        parts.append('preferred_moods: ' + ', '.join(sorted(prefs)))
+    if authors:
+        parts.append('favorite_authors: ' + ', '.join(sorted(authors)))
+    if titles:
+        parts.append('recent_books_mentioned: ' + ', '.join(sorted(titles)))
+
+    return ' | '.join(parts)
+
 @cache_chat_response
 def generate_chat_response(user_message, conversation_history=[]):
     """
@@ -705,11 +766,28 @@ def generate_chat_response(user_message, conversation_history=[]):
         LLMCircuitBreakerOpenError: If LLM circuit breaker is open
         AIServiceException: For other LLM service errors
     """
-    # Use LLM if available for more natural responses
+    # Build lightweight session memory summary from recent conversation
+    session_memory = build_session_memory(conversation_history)
+
+    # Use LLM if available for more natural, context-aware responses
     if llm_service.is_available():
         try:
-            prompt = f"You are a knowledgeable, friendly bookseller. A customer says: '{user_message}'. Respond warmly and helpfully in under 50 words."
-            llm_response = llm_service.generate_text(prompt, 100)
+            # More structured system prompt that includes session memory and instructions
+            system_prompt = (
+                "You are a warm, knowledgeable personal bookseller assistant. Use the session memory to answer follow-up questions, "
+                "and prefer concise, personalized recommendations. Do NOT invent facts or make up authors. If unsure, ask a clarifying question."
+            )
+
+            memory_note = f"Session memory: {session_memory}" if session_memory else "Session memory: none"
+
+            prompt = (
+                f"{system_prompt}\n{memory_note}\n"
+                f"Conversation history (most recent first): {conversation_history[-6:]}\n"
+                f"Customer: '{user_message}'\n"
+                "Respond warmly in under 60 words. If the user asks for books, prefer asking clarifying follow-ups when necessary, otherwise suggest 3 short options with one-sentence rationale."
+            )
+
+            llm_response = llm_service.generate_text(prompt, llm_service.config['recommendation_max_tokens'])
             if llm_response:
                 return llm_response
         except (LLMRateLimitError, LLMTimeoutError, LLMConnectionError, LLMCircuitBreakerOpenError) as e:
