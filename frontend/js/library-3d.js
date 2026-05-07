@@ -288,6 +288,34 @@ class BookshelfRenderer3D {
         this.init();
     }
 
+    getLibraryState() {
+        if (window.libManager && typeof window.libManager.getLibrarySnapshot === 'function') {
+            return window.libManager.getLibrarySnapshot();
+        }
+
+        const storageKey = 'bibliodrift_library';
+        return JSON.parse(localStorage.getItem(storageKey)) || {
+            current: [],
+            want: [],
+            finished: []
+        };
+    }
+
+    findBookShelf(bookId) {
+        if (window.libManager && typeof window.libManager.findBookShelf === 'function') {
+            return window.libManager.findBookShelf(bookId);
+        }
+
+        const library = this.getLibraryState();
+        for (const shelf of ['current', 'want', 'finished']) {
+            if ((library[shelf] || []).some(book => book.id === bookId)) {
+                return shelf;
+            }
+        }
+
+        return null;
+    }
+
     init() {
         // Sort listener
         const sortSelect = document.getElementById('library-sort');
@@ -318,6 +346,13 @@ class BookshelfRenderer3D {
 
         // Render all shelves with sample books
         this.refreshShelves();
+
+        window.addEventListener('bibliodrift:library-manager-ready', () => {
+            this.refreshShelves();
+        });
+        window.addEventListener('bibliodrift:library-manager-synced', () => {
+            this.refreshShelves();
+        });
 
         // Setup modal close handlers
         this.setupModalHandlers();
@@ -364,12 +399,7 @@ class BookshelfRenderer3D {
     }
 
     getShelfBookCount(shelfType, query = "") {
-        const storageKey = 'bibliodrift_library';
-        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {
-            current: [],
-            want: [],
-            finished: []
-        };
+        const localLibrary = this.getLibraryState();
         const books = localLibrary[shelfType] || [];
         if (!query) return books.length;
 
@@ -406,12 +436,7 @@ class BookshelfRenderer3D {
         container.setAttribute('aria-live', 'polite');
 
         // Fetch real library data
-        const storageKey = 'bibliodrift_library';
-        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {
-            current: [],
-            want: [],
-            finished: []
-        };
+        const localLibrary = this.getLibraryState();
         let books = [...(localLibrary[shelfType] || [])];
 
         // Map to expected format if needed (local storage format usually matches)
@@ -970,15 +995,7 @@ class BookshelfRenderer3D {
 
         if (shelfSelect) {
             shelfSelect.setAttribute('aria-label', 'Move book to shelf');
-            // Find current shelf
-            const storageKey = 'bibliodrift_library';
-            const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
-            let currentShelf = 'current'; // Default
-
-            ['current', 'want', 'finished'].forEach(shelf => {
-                const found = (localLibrary[shelf] || []).find(b => b.id === book.id || (b.volumeInfo && b.id === book.id));
-                if (found) currentShelf = shelf;
-            });
+            let currentShelf = this.findBookShelf(book.id) || 'current';
 
             shelfSelect.value = currentShelf;
 
@@ -1232,15 +1249,12 @@ class BookshelfRenderer3D {
     async moveBook(bookId, fromShelf, toShelf) {
         if (fromShelf === toShelf) return;
 
-        if (window.libManager && typeof window.libManager.findBookInShelf === 'function') {
-            const found = window.libManager.findBookInShelf(bookId);
-            if (!found || !found.book) {
+        if (window.libManager && typeof window.libManager.moveBook === 'function') {
+            const moved = await window.libManager.moveBook(bookId, toShelf);
+            if (!moved) {
                 console.error("Book not found in source shelf");
                 return;
             }
-
-            await window.libManager.removeBook(bookId);
-            await window.libManager.addBook(found.book, toShelf);
             this.refreshShelves();
             return;
         }
@@ -1317,12 +1331,14 @@ class BookshelfRenderer3D {
     }
 
     async updateBookMoods(bookId, moods) {
+        if (window.libManager && window.libManager.updateBook) {
+            await window.libManager.updateBook(bookId, { moods });
+            this.refreshShelves();
+            return;
+        }
+
         const storageKey = 'bibliodrift_library';
-        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {
-            current: [],
-            want: [],
-            finished: []
-        };
+        const localLibrary = this.getLibraryState();
 
         let found = false;
         ['current', 'want', 'finished'].forEach(shelf => {
@@ -1335,11 +1351,6 @@ class BookshelfRenderer3D {
 
         if (found) {
             localStorage.setItem(storageKey, JSON.stringify(localLibrary));
-            // Notify global libManager to sync with backend if available
-            if (window.libManager && window.libManager.updateBook) {
-                await window.libManager.updateBook(bookId, { moods });
-            }
-            // Sort by current criteria after update
             this.refreshShelves();
         }
     }
