@@ -571,19 +571,15 @@ def handle_generate_note():
         cached_note = BookNote.query.filter_by(book_title=title, book_author=author).first()
         if cached_note:
             logger.debug(f"Cache hit for {title} by {author}")
-            return success_response(data={"vibe": cached_note.content})
+            return success_response(data={"blurb": cached_note.content})
         
         # Generate AI recommendation with vibe context
         recommendation = generate_book_note(description, title, author, vibe)
         
         try:
             if recommendation and isinstance(recommendation, dict):
-                cache_content = recommendation.get('vibe', recommendation.get('bookseller_note', str(recommendation)))
-                new_note = BookNote(book_title=title, book_author=author, content=cache_content)
-                db.session.add(new_note)
-                db.session.commit()
-            elif isinstance(recommendation, str):
-                new_note = BookNote(book_title=title, book_author=author, content=recommendation)
+                blurb_content = recommendation.get('blurb', str(recommendation))
+                new_note = BookNote(book_title=title, book_author=author, content=blurb_content)
                 db.session.add(new_note)
                 db.session.commit()
         except SQLAlchemyError as e:
@@ -2408,19 +2404,15 @@ def handle_generate_note():
         cached_note = BookNote.query.filter_by(book_title=title, book_author=author).first()
         if cached_note:
             logger.debug(f"Cache hit for {title} by {author}")
-            return success_response(data={"vibe": cached_note.content})
+            return success_response(data={"blurb": cached_note.content})
         
         # Generate AI recommendation with vibe context
         recommendation = generate_book_note(description, title, author, vibe)
         
         try:
             if recommendation and isinstance(recommendation, dict):
-                cache_content = recommendation.get('vibe', recommendation.get('bookseller_note', str(recommendation)))
-                new_note = BookNote(book_title=title, book_author=author, content=cache_content)
-                db.session.add(new_note)
-                db.session.commit()
-            elif isinstance(recommendation, str):
-                new_note = BookNote(book_title=title, book_author=author, content=recommendation)
+                blurb_content = recommendation.get('blurb', str(recommendation))
+                new_note = BookNote(book_title=title, book_author=author, content=blurb_content)
                 db.session.add(new_note)
                 db.session.commit()
         except SQLAlchemyError as e:

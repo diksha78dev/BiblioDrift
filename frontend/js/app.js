@@ -503,10 +503,10 @@ class BookRenderer {
         const title = volumeInfo.title || "Untitled";
         const authors = volumeInfo.authors ? volumeInfo.authors.join(", ") : "Unknown Author";
         const thumb = volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : 'https://via.placeholder.com/128x196?text=No+Cover';
-        const description = volumeInfo.description ? volumeInfo.description.substring(0, 100) + "..." : "A mysterious tome waiting to be opened.";
+        const originalDescription = volumeInfo.description ? volumeInfo.description.substring(0, 100) + "..." : "A mysterious tome waiting to be opened.";
         const categories = volumeInfo.categories || [];
 
-        const vibe = this.generateVibe(description, categories);
+        const vibe = this.generateVibe(originalDescription, categories);
         const spineColors = ['#5D4037', '#4E342E', '#3E2723', '#2C2420', '#8D6E63'];
         const randomSpine = spineColors[Math.floor(Math.random() * spineColors.length)];
 
@@ -517,24 +517,6 @@ class BookRenderer {
         const flipSound = new Audio('../assets/sounds/page-flip.mp3');
         flipSound.volume = 0.5;
 
-        /**
-         * ============================================================================
-         * SECURE HTML ESCAPING HELPER & XSS PREVENTION
-         * ============================================================================
-         * Problem:
-         * Previously, book title and author data were injected directly into the 
-         * scene.innerHTML without sanitization. If data from the Google Books API 
-         * contained special HTML characters (e.g., <script> tags, <, >), this could 
-         * lead to rendering bugs or Cross-Site Scripting (XSS) vulnerabilities.
-         * 
-         * Fix:
-         * We introduce this `escapeHTML` helper function. It replaces sensitive 
-         * HTML characters with their harmless entity equivalents before injection. 
-         * This strictly forces the browser to treat the dynamic content as text 
-         * rather than executable code or structural markup. This is a crucial 
-         * security measure when constructing HTML strings manually.
-         * ============================================================================
-         */
         const escapeHTML = (str) => {
             if (!str) return "";
             return String(str)
@@ -547,17 +529,13 @@ class BookRenderer {
 
         const safeTitle = escapeHTML(title);
         const safeAuthors = escapeHTML(authors);
-        const safeDescription = escapeHTML(description);
+        const safeOriginalDescription = escapeHTML(originalDescription);
         const safeVibe = escapeHTML(vibe);
         const safeThumb = escapeHTML(thumb.replace('http:', 'https:'));
 
         scene.innerHTML = `
             <div class="book" data-id="${escapeHTML(id)}">
                 <div class="book__face book__face--front">
-                    <!-- 
-                      Using the sanitized title for the 'alt' attribute and 
-                      sanitized URL for 'src' ensures no attribute escape attacks.
-                    -->
                     <img src="${safeThumb}" alt="${safeTitle}">
                 </div>
                 <div class="book__face book__face--spine" style="background: ${randomSpine}"></div>
@@ -566,7 +544,6 @@ class BookRenderer {
                 <div class="book__face book__face--bottom"></div>
                 <div class="book__face book__face--back">
                     <div style="overflow-y: auto; height: 100%; padding-right: 5px; scrollbar-width: thin;">
-                        <!-- Safe data injection using escaped values -->
                         <div style="font-weight: bold; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-main);">${safeTitle}</div>
                         <div class="handwritten-note" style="margin-bottom: 0.8rem; font-style: italic; color: var(--wood-dark);">${safeVibe}</div>
                         ${bookData.moods && bookData.moods.length > 0 ? `
@@ -574,7 +551,7 @@ class BookRenderer {
                             ${bookData.moods.map(m => `<span style="font-size: 0.6rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 10px;"><i class="fa-solid ${this.getMoodIcon(m)}"></i> ${m}</span>`).join('')}
                         </div>
                         ` : ''}
-                        <div class="book-blurb" style="font-size: 0.8rem; line-height: 1.4; color: var(--text-muted); text-align: justify;">${safeDescription}</div>
+                        <div class="book-blurb" data-book-id="${escapeHTML(id)}" style="font-size: 0.8rem; line-height: 1.4; color: var(--text-muted); text-align: justify; min-height: 60px;">${safeOriginalDescription}</div>
                     </div>
                     ${shelf === 'current' ? `
                     <div class="reading-progress">
@@ -590,10 +567,23 @@ class BookRenderer {
                 </div>
             </div>
             <div class="glass-overlay">
-                <!-- Safe author and title data injection in the overlay -->
                 <strong>${safeTitle}</strong><br><small>${safeAuthors}</small>
             </div>
         `;
+
+        // Fetch AI-generated blurb asynchronously
+        const blurbElement = scene.querySelector('.book-blurb');
+        if (blurbElement) {
+            this.fetchAIBlurb(id, title, authors, volumeInfo.description || "", categories)
+                .then(aiBlurb => {
+                    if (aiBlurb && blurbElement) {
+                        blurbElement.textContent = aiBlurb;
+                    }
+                })
+                .catch(err => {
+                    // Silently keep fallback description
+                });
+        }
 
         // Interaction: Progress Slider
         const slider = scene.querySelector('.progress-slider');
@@ -696,10 +686,28 @@ class BookRenderer {
             });
             if (res.ok) {
                 const data = await res.json();
-                return data.vibe;
+                return data.data?.vibe || null;
             }
         } catch (e) {
-            // Silently fail to mock vibe
+            // Silently fail to use fallback
+        }
+        return null;
+    }
+
+    async fetchAIBlurb(bookId, title, author, description, categories = []) {
+        try {
+            const res = await fetch(`${MOOD_API_BASE}/generate-note`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ bookId, title, author, description, categories })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                return data.data?.blurb || null;
+            }
+        } catch (e) {
+            // Silently fail to use fallback
         }
         return null;
     }

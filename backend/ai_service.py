@@ -89,26 +89,21 @@ class PromptTemplates:
     
     @staticmethod
     def get_book_note_prompt(title: str, author: str, description: str, mood_context: str = "", vibe: str = "") -> str:
-        """Generate book note prompt template with vibe support."""
+        """Generate engaging mini-blurb for a book."""
         template = os.getenv('BOOK_NOTE_PROMPT_TEMPLATE', 
-            """You are a cozy, knowledgeable bookseller in a quiet shop. A customer is looking for a book recommendation based on their current vibe: "{vibe}".
+            """You are a passionate bookseller writing engaging book descriptions.
 
 Book: "{title}" by {author}
 Description: {description}
 {mood_context}
 
-IMPORTANT: Do NOT use hardcoded lists. Generate a recommendation dynamically based purely on the provided vibe: "{vibe}".
+Write a rich, engaging mini-blurb (80-120 words) that:
+- Captures what makes this book unique and special
+- Highlights emotional appeal or key themes
+- Avoids generic phrases
+- Makes readers want to pick it up
 
-Output a JSON object with the following structure:
-{{
-  "title": "A compelling book title that matches the vibe",
-  "author": "Author name that fits the recommendation", 
-  "cover_url": "URL or placeholder for book cover image",
-  "bookseller_note": "A warm, 3-4 sentence paragraph describing the reading experience for this specific vibe"
-}}
-
-Constraint: Keep the bookseller_note under 50 words and make it feel personal and atmospheric.
-Style: Warm, insightful, like a trusted bookseller sharing a hidden gem.""")
+Output ONLY the mini-blurb text, no JSON or formatting.""")
         
         max_words = os.getenv('BOOK_NOTE_MAX_WORDS', '30')
         return template.format(
@@ -487,7 +482,7 @@ __all__ = ['generate_book_note', 'get_ai_recommendations', 'get_category_books',
 
 
 def generate_book_note(description, title="", author="", vibe=""):
-    """Generate book note using LLM with vibe-based recommendations."""
+    """Generate AI mini-blurb for a book."""
     mood_context = ""
     if MOOD_ANALYSIS_AVAILABLE and title and author:
         try:
@@ -502,39 +497,17 @@ def generate_book_note(description, title="", author="", vibe=""):
             llm_response = llm_service.generate_text(prompt, llm_service.config['book_note_max_tokens'])
             
             if llm_response:
-                try:
-                    import json
-                    parsed_response = json.loads(llm_response)
-                    if isinstance(parsed_response, dict) and all(key in parsed_response for key in ['title', 'author', 'bookseller_note']):
-                        logger.info(f"Successfully generated structured recommendation for vibe: {vibe}")
-                        return parsed_response
-                except (json.JSONDecodeError, TypeError):
-                    logger.warning("LLM response was not valid JSON, using as plain text")
-                    return {
-                        "vibe": llm_response,
-                        "title": title or "A Perfect Match",
-                        "author": author or "Recommended Author"
-                    }
+                # Return the AI-generated mini-blurb directly
+                return {"blurb": llm_response.strip()}
                 
         except Exception as e:
             logger.error(f"LLM book note generation failed: {e}")
     
-    if MOOD_ANALYSIS_AVAILABLE and title and author:
-        try:
-            return generate_enhanced_book_note(description, title, author)
-        except Exception as e:
-            logger.debug(f"Mood analysis fallback failed: {e}")
+    # Fallback: use original description or generic fallback
+    if description and len(description) > 0:
+        return {"blurb": description[:200] + "..." if len(description) > 200 else description}
     
-    if len(description) > 200:
-        return {"vibe": "A deep, complex narrative that readers find emotionally resonant."}
-    elif len(description) > 100:
-        return {"vibe": "A compelling story with layers waiting to be discovered."}
-    elif "mystery" in description.lower():
-        return {"vibe": "A mysterious tale that will keep you guessing."}
-    elif "romance" in description.lower():
-        return {"vibe": "A heartwarming story perfect for cozy reading."}
-    else:
-        return {"vibe": "A delightful read for any quiet moment."}
+    return {"blurb": "A remarkable book waiting to be discovered."}
 
 
 @cache_recommendations
