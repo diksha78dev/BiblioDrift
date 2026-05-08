@@ -1,6 +1,6 @@
 # 🌌 BiblioDrift — Drift Through Stories, Not Screens
 
-[![Live App](https://img.shields.io/badge/🌍%20Live%20App-Explore%20Now-5314C4?style=for-the-badge&logo=netlify)](https://gitcanvas-dm.streamlit.app/)
+[![Live App](https://img.shields.io/badge/🌍%20Live%20App-Explore%20Now-5314C4?style=for-the-badge&logo=netlify)](https://bibliodrift-dm.netlify.app/)
 [![NSoC 2026](https://img.shields.io/badge/NSoC-2026-blue?style=for-the-badge)](Open-Source-Event-Guidelines.md)
 
 > **"Find yourself in the pages."**  
