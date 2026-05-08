@@ -481,6 +481,15 @@ __all__ = ['generate_book_note', 'get_ai_recommendations', 'get_category_books',
            'LLMService', 'PromptTemplates']
 
 
+def _count_words(text: str) -> int:
+    return len(re.findall(r'\S+', text or ''))
+
+
+def _is_valid_book_note(text: str) -> bool:
+    word_count = _count_words(text)
+    return 80 <= word_count <= 120
+
+
 def generate_book_note(description, title="", author="", vibe=""):
     """Generate AI mini-blurb for a book."""
     mood_context = ""
@@ -497,8 +506,28 @@ def generate_book_note(description, title="", author="", vibe=""):
             llm_response = llm_service.generate_text(prompt, llm_service.config['book_note_max_tokens'])
             
             if llm_response:
-                # Return the AI-generated mini-blurb directly
-                return {"blurb": llm_response.strip()}
+                cleaned_response = llm_response.strip()
+                if _is_valid_book_note(cleaned_response):
+                    return {"blurb": cleaned_response}
+
+                retry_prompt = (
+                    f"{prompt}\n\n"
+                    "Your last answer did not meet the 80-120 word requirement. "
+                    "Rewrite it as a single mini-blurb between 80 and 120 words. "
+                    "Do not add JSON, bullets, or extra commentary."
+                )
+                retry_response = llm_service.generate_text(retry_prompt, llm_service.config['book_note_max_tokens'])
+                if retry_response:
+                    cleaned_retry = retry_response.strip()
+                    if _is_valid_book_note(cleaned_retry):
+                        return {"blurb": cleaned_retry}
+
+                logger.warning(
+                    "Generated book note did not meet the 80-120 word target for %s by %s",
+                    title,
+                    author,
+                )
+                return {"blurb": cleaned_response}
                 
         except Exception as e:
             logger.error(f"LLM book note generation failed: {e}")

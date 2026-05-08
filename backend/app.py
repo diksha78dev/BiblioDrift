@@ -28,7 +28,7 @@ if os.path.exists(env_path):
 else:
     load_dotenv()
 
-from config import app_config, setup_logging
+from config import app_config, setup_logging, validate_required_env_vars
 from ai_service import generate_book_note, get_ai_recommendations, get_category_books, get_book_mood_tags_safe, generate_chat_response, llm_service
 from models import db, User, Book, ShelfItem, BookNote, ReadingGoal, ReadingStats, Collection, CollectionItem, PriceHistory, PriceAlert, Review, register_user, login_user
 from price_tracker import get_price_tracker
@@ -542,65 +542,6 @@ def handle_category_books():
     except Exception as e:
         logger.error(f"Error in handle_category_books: {str(e)}", exc_info=True)
         return internal_error(str(e))
-
-
-@app.route('/api/v1/generate-note', methods=['POST'])
-@rate_limit('generate_note')
-def handle_generate_note():
-    """Generate AI-powered book recommendation with vibe support."""
-    from exceptions import (
-        LLMCircuitBreakerOpenError, AIServiceException,
-        DatabaseQueryError, DatabaseIntegrityError,
-        ValidationException, InvalidInputError
-    )
-    from error_responses import handle_exception
-    
-    try:
-        data = request.get_json()
-        
-        is_valid, validated_data = validate_request(GenerateNoteRequest, data)
-        if not is_valid:
-            return jsonify(validated_data), 400
-        
-        description = validated_data.description
-        title = validated_data.title
-        author = validated_data.author
-        vibe = getattr(validated_data, 'vibe', 'cozy discovery')
-        
-        # Check cache
-        cached_note = BookNote.query.filter_by(book_title=title, book_author=author).first()
-        if cached_note:
-            logger.debug(f"Cache hit for {title} by {author}")
-            return success_response(data={"blurb": cached_note.content})
-        
-        # Generate AI recommendation with vibe context
-        recommendation = generate_book_note(description, title, author, vibe)
-        
-        try:
-            if recommendation and isinstance(recommendation, dict):
-                blurb_content = recommendation.get('blurb', str(recommendation))
-                new_note = BookNote(book_title=title, book_author=author, content=blurb_content)
-                db.session.add(new_note)
-                db.session.commit()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error caching note: {e}")
-            db.session.rollback()
-        except Exception as e:
-            logger.error(f"Unexpected error caching note: {e}")
-            db.session.rollback()
-            # Don't fail the request if caching fails - still return the recommendation
-
-        return success_response(data=recommendation)
-        
-    except (LLMCircuitBreakerOpenError, AIServiceException) as e:
-        logger.error(f"AI service error in handle_generate_note: {e}", exc_info=True)
-        return handle_exception(e, "handle_generate_note")
-    except (ValidationException, InvalidInputError) as e:
-        logger.warning(f"Validation error in handle_generate_note: {e}")
-        return handle_exception(e, "handle_generate_note")
-    except Exception as e:
-        logger.error(f"Unexpected error in handle_generate_note: {type(e).__name__}: {e}", exc_info=True)
-        return handle_exception(e, "handle_generate_note")
 
 @app.route('/api/v1/chat', methods=['POST'])
 @rate_limit('chat')
