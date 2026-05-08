@@ -168,7 +168,7 @@ Follow this checklist for any feature PR during Sourcery.
 
 ### Issue 5: Document One API Flow Better
 - Improve one example request/response path in the docs.
-- Files: `README.md` or `PROJECT_DETAILS.md`
+- Files: `README.md` or `docs/contributing.md`
 
 ---
 

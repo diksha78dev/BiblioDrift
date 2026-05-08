@@ -62,8 +62,8 @@ It feels like:
 |------|-----------|
 | Frontend | HTML5, CSS3 (3D), Vanilla JS |
 | API | Google Books API |
-| Backend | Flask (Planned) |
-| AI | LLM + FAISS |
+| Backend | Flask, SQLAlchemy, JWT cookies |
+| AI | LLM-powered notes, chat, and mood analysis |
 | Storage | LocalStorage |
 
 ---
@@ -210,8 +210,8 @@ This ensures discovery stays organic, scalable, and aligned with BiblioDrift’s
 2. Open index.html in your browser.
    - That's it! No build steps required for the vanilla frontend.
 
-### Backend (Future)
-Planned implementation using Python Flask.
+### Backend
+The Flask backend powers authentication, library sync, AI blurbs, chat, mood analysis, and other API flows.
 
 ## 🚢 Deployment Notes
 
