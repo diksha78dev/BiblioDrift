@@ -1058,6 +1058,11 @@ class LibraryManager {
         this._initPromise = this.init();
     }
 
+    async ready() {
+        await this._initPromise;
+        return this;
+    }
+
     async init() {
         // 1. Request persistent storage to prevent wipes
         await SafeStorage.requestPersistence();
@@ -1502,6 +1507,19 @@ class LibraryManager {
         }
         return null;
     }
+
+    getShelfBooks(shelf) {
+        return Array.isArray(this.library[shelf]) ? [...this.library[shelf]] : [];
+    }
+
+    getLibrarySnapshot() {
+        return {
+            current: this.getShelfBooks('current'),
+            want: this.getShelfBooks('want'),
+            finished: this.getShelfBooks('finished')
+        };
+    }
+
     async removeBook(id) {
         const result = this.findBookInShelf(id);
         if (result) {
@@ -1541,6 +1559,60 @@ class LibraryManager {
             return true;
         }
         return false;
+    }
+
+    async moveBook(id, toShelf) {
+        const result = this.findBookInShelf(id);
+        if (!result) return false;
+
+        const { shelf: fromShelf, book } = result;
+        if (fromShelf === toShelf) return true;
+        if (!this.library[toShelf]) return false;
+
+        this.library[fromShelf] = this.library[fromShelf].filter(b => b.id !== id);
+
+        if (toShelf === 'finished' && book.progress !== 100) {
+            book.progress = 100;
+        } else if (toShelf === 'current' && (book.progress == null || book.progress === 100)) {
+            book.progress = 0;
+        }
+
+        this.library[toShelf].push(book);
+        this.saveLocally();
+
+        const user = this.getUser();
+        if (user && book.db_id) {
+            try {
+                const res = await fetch(`${this.apiBase}/library/${book.db_id}`, {
+                    method: 'PUT',
+                    headers: this.getAuthHeaders(),
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        shelf_type: toShelf,
+                        progress: book.progress,
+                        version: book.version
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    book.version = data.item.version;
+                    this.saveLocally();
+                } else if (res.status === 409) {
+                    showToast("Conflict detected! Syncing with server...", "error");
+                    await this.syncWithBackend();
+                    return false;
+                } else {
+                    const data = await res.json();
+                    console.error("Move failed:", data.error);
+                }
+            } catch (e) {
+                console.error("Failed to update backend during move", e);
+                showToast("Moved locally (Sync failed)", "info");
+            }
+        }
+
+        return true;
     }
 
     saveLocally() {
@@ -1730,6 +1802,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Initialize Managers
     const libManager = new LibraryManager();
     window.libManager = libManager;
+    window.dispatchEvent(new CustomEvent('bibliodrift:library-manager-ready', {
+        detail: { libraryManager: libManager }
+    }));
+    libManager.ready().then(() => {
+        window.dispatchEvent(new CustomEvent('bibliodrift:library-manager-synced', {
+            detail: { libraryManager: libManager }
+        }));
+    });
 
     window.renderer = new BookRenderer(libManager);
     const themeManager = new ThemeManager();
@@ -2352,12 +2432,22 @@ const KeyboardShortcuts = {
             // Get the book data from the element
             const bookId = bookElement.dataset.bookId;
             if (window.bookshelfRenderer && bookId) {
-                // Find the book data by traversing the library
-                const storage = JSON.parse(localStorage.getItem('bibliodrift_library')) || { current: [], want: [], finished: [] };
+                const storage = window.libManager?.getLibrarySnapshot?.() || { current: [], want: [], finished: [] };
                 for (const shelf of ['current', 'want', 'finished']) {
                     const book = storage[shelf].find(b => b.id === bookId);
                     if (book) {
-                        window.bookshelfRenderer.currentBook = book;
+                        window.bookshelfRenderer.currentBook = book.volumeInfo ? {
+                            id: book.id,
+                            title: book.volumeInfo.title || 'Untitled',
+                            author: (book.volumeInfo.authors && book.volumeInfo.authors[0]) || 'Unknown',
+                            cover: book.volumeInfo.imageLinks?.thumbnail || '',
+                            description: book.volumeInfo.description || '',
+                            rating: book.volumeInfo.averageRating || 0,
+                            ratingCount: book.volumeInfo.ratingsCount || 0,
+                            categories: book.volumeInfo.categories || [],
+                            moods: book.moods || [],
+                            reviews: []
+                        } : book;
                         break;
                     }
                 }
@@ -2411,7 +2501,7 @@ const KeyboardShortcuts = {
         }
 
         const currentBook = window.bookshelfRenderer.currentBook;
-        const storage = JSON.parse(localStorage.getItem('bibliodrift_library')) || { current: [], want: [], finished: [] };
+        const storage = window.libManager?.getLibrarySnapshot?.() || { current: [], want: [], finished: [] };
 
         // Find current shelf
         let currentShelf = null;
