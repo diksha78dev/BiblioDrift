@@ -217,7 +217,7 @@ Tell me: what is stirring in you today?`,
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    history: this.conversationHistory.slice(-5) // Only send last 5 messages for context
+                    history: this.conversationHistory.slice(-10) // Send last 10 messages for better session memory
                 })
             });
 
@@ -738,6 +738,94 @@ Tell me: what is stirring in you today?`,
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    extractMoodKeywordsFromHistory() {
+        try {
+            const textBlob = this.conversationHistory.map(m => (m.content || '')).join(' ');
+            const keywords = [];
+            const moodHints = ['cozy','comfort','romance','mystery','thriller','dark','uplifting','melancholy','adventure','fantasy','science fiction','sci-fi','historical','literary'];
+            const lower = textBlob.toLowerCase();
+            moodHints.forEach(h => { if (lower.includes(h)) keywords.push(h); });
+            return Array.from(new Set(keywords)).slice(0,4);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    createSuggestionButton(text, icon) {
+        const btn = document.createElement('button');
+        btn.className = 'suggestion-btn';
+        if (icon) btn.innerHTML = `<i class="fa-solid ${icon}"></i> ${text}`;
+        else btn.textContent = text;
+        btn.onclick = () => sendQuickMessage(text);
+        return btn;
+    }
+
+    updateSuggestionChips() {
+        if (!this.quickSuggestions || !this.quickSuggestionsList) return;
+        // Clear existing
+        this.quickSuggestionsList.innerHTML = '';
+
+        // Build dynamic suggestions from history
+        const kws = this.extractMoodKeywordsFromHistory();
+        const chips = [];
+        if (kws.length) {
+            kws.forEach(k => chips.push({text: `I'm in the mood for ${k}`, icon: 'fa-mug-hot'}));
+        }
+
+        // If no keywords, provide context-aware defaults
+        if (chips.length === 0) {
+            chips.push({text: 'I want something cozy and comforting', icon: 'fa-mug-hot'});
+            chips.push({text: 'Looking for a thrilling mystery', icon: 'fa-magnifying-glass'});
+            chips.push({text: 'Something romantic and heartwarming', icon: 'fa-heart'});
+            chips.push({text: 'I need an escape to another world', icon: 'fa-wand-sparkles'});
+        }
+
+        chips.slice(0,6).forEach(c => {
+            const btn = this.createSuggestionButton(c.text, c.icon.replace('fa-', 'fa-') );
+            this.quickSuggestionsList.appendChild(btn);
+        });
+
+        this.quickSuggestions.style.display = 'block';
+    }
+
+    async addToLibrary(book) {
+        try {
+            const user = window.currentUser || null;
+            if (!user) {
+                alert('Sign in to add books to your library.');
+                return;
+            }
+
+            const payload = {
+                user_id: user.id,
+                google_books_id: book.id,
+                title: book.volumeInfo?.title || '',
+                authors: book.volumeInfo?.authors || [],
+                thumbnail: book.volumeInfo?.imageLinks?.thumbnail || '' ,
+                shelf_type: 'owned'
+            };
+
+            const resp = await fetch((window.MOOD_API_BASE || '/api/v1') + '/library', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+
+            if (resp.ok) {
+                alert('Added to your library');
+            } else if (resp.status === 401) {
+                alert('Please sign in to add books to your library.');
+            } else {
+                const data = await resp.json().catch(()=>({}));
+                alert((data && data.message) || 'Failed to add book to library');
+            }
+        } catch (e) {
+            console.error('Add to library failed', e);
+            alert('Failed to add book to library');
+        }
     }
 }
 
