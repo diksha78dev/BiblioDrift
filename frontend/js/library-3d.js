@@ -545,6 +545,7 @@ class BookshelfRenderer3D {
         // A simple way to avoid duplicates is to set a custom property or remove and re-add.
         // Or better, just attach these once in init() if possible, but we need shelfType reference.
         // Since renderShelf is called multiple times, we should check if listeners are attached.
+        container.dataset.shelf = shelfType;
 
         if (!container.dataset.dropListenersAttached) {
             container.addEventListener('dragover', (e) => {
@@ -554,16 +555,19 @@ class BookshelfRenderer3D {
 
             container.addEventListener('dragleave', (e) => {
                 container.style.backgroundColor = '';
+                
             });
 
             container.addEventListener('drop', (e) => {
                 e.preventDefault();
                 container.style.backgroundColor = '';
+
+                const targetShelf = e.currentTarget.dataset.shelf;
                 const bookId = e.dataTransfer.getData('bookId');
                 const sourceShelf = e.dataTransfer.getData('sourceShelf');
 
-                if (bookId && sourceShelf && sourceShelf !== shelfType) {
-                    this.moveBook(bookId, sourceShelf, shelfType);
+                if (bookId && sourceShelf && sourceShelf !== targetShelf) {
+                    this.moveBook(bookId, sourceShelf, targetShelf);
                 }
             });
             container.dataset.dropListenersAttached = 'true';
