@@ -43,6 +43,11 @@ class CacheConfig:
     CHAT_RESPONSE_PREFIX = "chat_response"
     GOODREADS_PREFIX = "goodreads"
 
+    # Redis Connection Timeouts
+    REDIS_SOCKET_TIMEOUT = float(os.getenv('REDIS_SOCKET_TIMEOUT', 2.0))
+    REDIS_CONNECT_TIMEOUT = float(os.getenv('REDIS_CONNECT_TIMEOUT', 2.0))
+
+
 
 class CacheService:
     """Multi-layer caching service for expensive operations."""
@@ -72,7 +77,11 @@ class CacheService:
             if CacheConfig.CACHE_TYPE == 'redis' and REDIS_AVAILABLE:
                 cache_config.update({
                     'CACHE_TYPE': 'RedisCache',
-                    'CACHE_REDIS_URL': CacheConfig.REDIS_URL
+                    'CACHE_REDIS_URL': CacheConfig.REDIS_URL,
+                    'CACHE_OPTIONS': {
+                        'socket_timeout': CacheConfig.REDIS_SOCKET_TIMEOUT,
+                        'socket_connect_timeout': CacheConfig.REDIS_CONNECT_TIMEOUT
+                    }
                 })
                 logger.info("Initializing Redis cache")
             elif CacheConfig.CACHE_TYPE == 'null':
@@ -88,9 +97,19 @@ class CacheService:
             # Initialize Redis client for advanced operations
             if CacheConfig.CACHE_TYPE == 'redis' and REDIS_AVAILABLE:
                 try:
-                    self.redis_client = redis.from_url(CacheConfig.REDIS_URL)
+                    self.redis_client = redis.from_url(
+                        CacheConfig.REDIS_URL,
+                        socket_timeout=CacheConfig.REDIS_SOCKET_TIMEOUT,
+                        socket_connect_timeout=CacheConfig.REDIS_CONNECT_TIMEOUT
+                    )
                     self.redis_client.ping()  # Test connection
                     logger.info("Redis client initialized successfully")
+                except redis.exceptions.ConnectionError as e:
+                    logger.warning(f"Redis client connection failed (timeout/offline): {e}")
+                    self.redis_client = None
+                except redis.exceptions.TimeoutError as e:
+                    logger.warning(f"Redis client connection timed out: {e}")
+                    self.redis_client = None
                 except Exception as e:
                     logger.warning(f"Redis client initialization failed: {e}")
                     self.redis_client = None
@@ -128,6 +147,14 @@ class CacheService:
                 self.cache_stats['misses'] += 1
                 logger.debug(f"Cache miss for key: {key}")
             return value
+        except redis.exceptions.TimeoutError as e:
+            self.cache_stats['errors'] += 1
+            logger.error(f"Redis cache get timeout for key {key}: {e}")
+            return None
+        except redis.exceptions.ConnectionError as e:
+            self.cache_stats['errors'] += 1
+            logger.error(f"Redis cache get connection error for key {key}: {e}")
+            return None
         except Exception as e:
             self.cache_stats['errors'] += 1
             logger.error(f"Cache get error for key {key}: {e}")
@@ -142,6 +169,14 @@ class CacheService:
             self.cache.set(key, value, timeout=timeout)
             logger.debug(f"Cache set for key: {key}")
             return True
+        except redis.exceptions.TimeoutError as e:
+            self.cache_stats['errors'] += 1
+            logger.error(f"Redis cache set timeout for key {key}: {e}")
+            return False
+        except redis.exceptions.ConnectionError as e:
+            self.cache_stats['errors'] += 1
+            logger.error(f"Redis cache set connection error for key {key}: {e}")
+            return False
         except Exception as e:
             self.cache_stats['errors'] += 1
             logger.error(f"Cache set error for key {key}: {e}")
@@ -156,6 +191,14 @@ class CacheService:
             self.cache.delete(key)
             logger.debug(f"Cache delete for key: {key}")
             return True
+        except redis.exceptions.TimeoutError as e:
+            self.cache_stats['errors'] += 1
+            logger.error(f"Redis cache delete timeout for key {key}: {e}")
+            return False
+        except redis.exceptions.ConnectionError as e:
+            self.cache_stats['errors'] += 1
+            logger.error(f"Redis cache delete connection error for key {key}: {e}")
+            return False
         except Exception as e:
             self.cache_stats['errors'] += 1
             logger.error(f"Cache delete error for key {key}: {e}")
@@ -174,6 +217,12 @@ class CacheService:
                 deleted = self.redis_client.delete(*keys)
                 logger.info(f"Cleared {deleted} cache entries with prefix: {prefix}")
                 return deleted
+            return 0
+        except redis.exceptions.TimeoutError as e:
+            logger.error(f"Redis timeout error clearing cache prefix {prefix}: {e}")
+            return 0
+        except redis.exceptions.ConnectionError as e:
+            logger.error(f"Redis connection error clearing cache prefix {prefix}: {e}")
             return 0
         except Exception as e:
             logger.error(f"Error clearing cache prefix {prefix}: {e}")
