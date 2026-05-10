@@ -593,11 +593,21 @@ def handle_chat():
         # Try to get book recommendations based on the message
         recommendations = get_ai_recommendations(user_message)
         
+        # =========================================================================
+        # TIMESTAMP STANDARDIZATION
+        # =========================================================================
+        # Ensure that the timestamp returned to the client is explicitly set to
+        # UTC using timezone-aware objects. This prevents subtle bugs where server 
+        # locale or deployment environments might skew the time by relying on 
+        # naive datetime.now() calls. This is a critical fix for ensuring
+        # consistent client-side formatting regardless of geographical region.
+        # =========================================================================
+        
         return success_response(
             data={
                 "response": response,
                 "recommendations": recommendations,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
         
@@ -1161,7 +1171,16 @@ def set_reading_goal():
 def get_reading_stats():
     """Get reading statistics for the user."""
     user_id = request.args.get('user_id', type=int)
-    year = request.args.get('year', datetime.now().year, type=int)
+    
+    # =========================================================================
+    # TIMEZONE-AWARE YEAR RESOLUTION
+    # =========================================================================
+    # The default year is dynamically resolved using a timezone-aware UTC 
+    # datetime object. This avoids edge cases near New Year's Eve where a server 
+    # running in a different timezone might incorrectly calculate the 'current'
+    # year relative to the user's local time or universal time.
+    # =========================================================================
+    year = request.args.get('year', datetime.now(timezone.utc).year, type=int)
     
     if not user_id:
         return jsonify({"error": "user_id is required"}), 400
@@ -1196,7 +1215,15 @@ def get_reading_stats():
 @jwt_required()
 def get_leaderboard():
     """Get community reading leaderboard."""
-    year = request.args.get('year', datetime.now().year, type=int)
+    
+    # =========================================================================
+    # TIMEZONE-AWARE YEAR RESOLUTION (LEADERBOARD)
+    # =========================================================================
+    # Similar to reading stats, the leaderboard must ensure the default year
+    # aligns with UTC correctly. Relying on naive datetime could cause 
+    # discrepancies in leaderboard data rendering at the turn of the year.
+    # =========================================================================
+    year = request.args.get('year', datetime.now(timezone.utc).year, type=int)
     limit = request.args.get('limit', 10, type=int)
     
     try:
@@ -2426,11 +2453,21 @@ def handle_chat():
         # Try to get book recommendations based on the message
         recommendations = get_ai_recommendations(user_message)
         
+        # =========================================================================
+        # TIMESTAMP STANDARDIZATION
+        # =========================================================================
+        # Ensure that the timestamp returned to the client is explicitly set to
+        # UTC using timezone-aware objects. This prevents subtle bugs where server 
+        # locale or deployment environments might skew the time by relying on 
+        # naive datetime.now() calls. This is a critical fix for ensuring
+        # consistent client-side formatting regardless of geographical region.
+        # =========================================================================
+        
         return success_response(
             data={
                 "response": response,
                 "recommendations": recommendations,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
         
@@ -2994,7 +3031,16 @@ def set_reading_goal():
 def get_reading_stats():
     """Get reading statistics for the user."""
     user_id = request.args.get('user_id', type=int)
-    year = request.args.get('year', datetime.now().year, type=int)
+    
+    # =========================================================================
+    # TIMEZONE-AWARE YEAR RESOLUTION
+    # =========================================================================
+    # The default year is dynamically resolved using a timezone-aware UTC 
+    # datetime object. This avoids edge cases near New Year's Eve where a server 
+    # running in a different timezone might incorrectly calculate the 'current'
+    # year relative to the user's local time or universal time.
+    # =========================================================================
+    year = request.args.get('year', datetime.now(timezone.utc).year, type=int)
     
     if not user_id:
         return jsonify({"error": "user_id is required"}), 400
@@ -3029,7 +3075,15 @@ def get_reading_stats():
 @jwt_required()
 def get_leaderboard():
     """Get community reading leaderboard."""
-    year = request.args.get('year', datetime.now().year, type=int)
+    
+    # =========================================================================
+    # TIMEZONE-AWARE YEAR RESOLUTION (LEADERBOARD)
+    # =========================================================================
+    # Similar to reading stats, the leaderboard must ensure the default year
+    # aligns with UTC correctly. Relying on naive datetime could cause 
+    # discrepancies in leaderboard data rendering at the turn of the year.
+    # =========================================================================
+    year = request.args.get('year', datetime.now(timezone.utc).year, type=int)
     limit = request.args.get('limit', 10, type=int)
     
     try:
