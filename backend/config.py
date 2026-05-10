@@ -181,11 +181,262 @@ class Config:
             elif len(self.jwt.secret_key) < 32:
                 errors.append("JWT_SECRET_KEY should be at least 32 characters long")
         
-        # Validate database configuration
-        # SQLite is not suitable for concurrent multi-user production workloads.
+        # =====================================================================
+        # DATABASE CONFIGURATION VALIDATION (PRODUCTION HARDENING)
+        # =====================================================================
+        # 
+        # INTRODUCTION & RATIONALE:
+        # -------------------------
+        # In production environments, ensuring that the application connects to 
+        # a highly available, robust, and concurrent database system is not just 
+        # a recommendation, it is an absolute technical requirement.
+        # 
+        # During local development and testing, the application is configured 
+        # to gracefully fall back to a local SQLite database file 
+        # (e.g., sqlite:///instance/biblio.db) if no explicit DATABASE_URL 
+        # environment variable is provided. This allows developers to quickly 
+        # spin up the application without needing to provision a full database 
+        # server on their local machines.
+        #
+        # However, SQLite is architecturally inappropriate for serving as the 
+        # primary data store in our production deployment. 
+        # 
+        # WHY SQLITE IS UNSUITABLE FOR PRODUCTION:
+        # ----------------------------------------
+        # 
+        # 1. Lack of Fine-Grained Concurrency Control:
+        #    SQLite implements locking at the entire database file level. When 
+        #    a process writes to the database, it obtains an exclusive lock on 
+        #    the entire file. Under concurrent load from multiple users or 
+        #    application instances, this immediately creates a severe bottleneck. 
+        #    Requests will queue up, and many will fail with "database is locked" 
+        #    errors, degrading the user experience catastrophically.
+        #    In a modern web application framework handling potentially hundreds
+        #    of requests per second, row-level locking (as provided by 
+        #    PostgreSQL) is absolutely mandatory.
+        #
+        # 2. Risk of Data Corruption:
+        #    In a modern cloud deployment, the application may be scaled 
+        #    horizontally across multiple containers, pods, or servers 
+        #    (e.g., via Kubernetes or AWS ECS). If these disparate instances 
+        #    attempt to access a single shared SQLite file (e.g., via a network 
+        #    filesystem like NFS, EFS, or SMB), the standard POSIX file locking 
+        #    mechanisms are notoriously unreliable over the network. 
+        #    This specific architectural anti-pattern can and will lead to 
+        #    irreparable, silent data corruption, potentially destroying 
+        #    critical user records and application state.
+        #
+        # 3. Missing Advanced Data Types & Functions:
+        #    Our application leverages advanced, specialized database features 
+        #    such as JSONB columns for flexible schema storage, full-text search 
+        #    vectors (tsvector/tsquery), and array data types. SQLite either 
+        #    lacks support for these types entirely or provides poor, string-based
+        #    emulation that does not scale well and performs poorly when indexed.
+        #    Attempting to run complex migrations involving these types against 
+        #    SQLite will result in catastrophic failure.
+        #
+        # 4. Connection Pooling Limitations:
+        #    PostgreSQL handles thousands of concurrent connections efficiently 
+        #    when paired with a connection pooler like PgBouncer. SQLite has 
+        #    no concept of network-level connection pooling, and its "connection"
+        #    concept is simply an open file handle, making it impossible to 
+        #    implement robust connection lifecycle management, timeout handling,
+        #    or query cancellation across distributed systems.
+        #
+        # THE FIX / IMPLEMENTATION DETAILS:
+        # ---------------------------------
+        # To prevent accidental deployment of a fragile database architecture, 
+        # we implement a hard fail-fast mechanism here in the configuration 
+        # bootloader. If the application determines it is running in a production 
+        # environment (via APP_ENV or FLASK_ENV variables), it must strictly 
+        # validate the DATABASE_URL.
+        # 
+        # We explicitly mandate the use of a PostgreSQL database URI. 
+        # If the URI points to SQLite, or if it is missing altogether (falling 
+        # back to the default `sqlite:///` string), the application will safely 
+        # refuse to boot. It will instead raise a ValueError, outputting a 
+        # detailed, actionable error message to standard output or the system 
+        # logs, alerting operations teams to the misconfiguration immediately.
+        #
+        # This proactive, defensive validation pattern is structurally identical 
+        # to how we already enforce the presence of a cryptographically secure 
+        # JWT_SECRET_KEY. Failing fast at startup prevents corrupt state later.
+        #
+        # =====================================================================
+
         if self.is_production():
-            if self.database.url.startswith('sqlite://'):
-                errors.append("DATABASE_URL must be set to a PostgreSQL URI in production. SQLite is not suitable for concurrent multi-user production workloads.")
+            
+            # Extract the raw database URL from our initialized configuration
+            raw_db_url = str(self.database.url)
+            
+            # Normalize the database URL to lowercase to ensure our string 
+            # matching and validation logic is thoroughly case-insensitive.
+            # This handles edge cases where the user, infrastructure-as-code,
+            # or CI/CD pipeline might provide a URL with varying casing 
+            # (e.g., PoStGrEsQl://... instead of the standard lowercase format).
+            db_url_normalized = raw_db_url.lower().strip()
+            
+            # -----------------------------------------------------------------
+            # VALIDATION STEP 1: EXPLICITLY INTERCEPT & REJECT SQLITE
+            # -----------------------------------------------------------------
+            # We must aggressively intercept any configuration that attempts to 
+            # utilize SQLite in production. This includes both explicit 
+            # declarations (e.g., DATABASE_URL=sqlite:///production.db) and 
+            # implicit fallbacks (e.g., the user simply forgot to set 
+            # DATABASE_URL entirely in their environment or .env file).
+            
+            if db_url_normalized.startswith('sqlite://'):
+                
+                # We have definitively detected a SQLite connection string. 
+                # This is a critical configuration violation that compromises 
+                # system integrity. We construct a highly detailed, multi-line 
+                # error message that explains not just *what* failed, but *why* 
+                # it failed, and exactly *how* the DevOps engineer or 
+                # backend developer can remediate the issue immediately.
+                
+                sqlite_error_message = (
+                    "\n"
+                    "================================================================================\n"
+                    "CRITICAL DATABASE CONFIGURATION ERROR [PRODUCTION ENVIRONMENT]\n"
+                    "================================================================================\n"
+                    "FATAL STARTUP ABORTED: The application attempted to initialize using a SQLite \n"
+                    "database connection while running in a production configuration.\n\n"
+                    f"Current DATABASE_URL: '{raw_db_url}'\n\n"
+                    "--- WHY THIS FAILED ---\n"
+                    "SQLite is strictly forbidden in production environments. While excellent for \n"
+                    "local development and unit testing, SQLite utilizes aggressive file-level \n"
+                    "locking which fundamentally cannot support the concurrent read/write \n"
+                    "workloads generated by a multi-user web application. \n\n"
+                    "Deploying SQLite in this context will inevitably lead to:\n"
+                    "  * Database lock timeouts (HTTP 500 errors for users)\n"
+                    "  * Severe architectural performance bottlenecks\n"
+                    "  * A high probability of unrecoverable data corruption if the database file \n"
+                    "    is accessed over a network mount (NFS/EFS) or by multiple containers.\n\n"
+                    "--- HOW TO REMEDIATE THIS ---\n"
+                    "  1. Provision a production-grade PostgreSQL database instance (e.g., via \n"
+                    "     AWS RDS, Google Cloud SQL, Heroku Postgres, or Supabase).\n"
+                    "  2. Obtain the connection URI (format: postgresql://user:pass@host:port/db).\n"
+                    "  3. Set the 'DATABASE_URL' environment variable to this precise URI before \n"
+                    "     attempting to restart the application service or container.\n"
+                    "================================================================================"
+                )
+                
+                # Append this detailed error to our configuration validation errors list. 
+                # The upstream validation runner will aggregate this (along with any 
+                # other configuration errors) and raise a fatal ValueError to crash 
+                # the startup sequence gracefully and visibly.
+                errors.append(sqlite_error_message)
+            
+            # -----------------------------------------------------------------
+            # VALIDATION STEP 2: STRICTLY MANDATE POSTGRESQL USAGE
+            # -----------------------------------------------------------------
+            # Even if the operator isn't using SQLite, they might attempt to 
+            # provision and connect to MySQL, SQL Server, Oracle, or some other 
+            # relational database technology. 
+            # 
+            # Our application's Object-Relational Mapping (ORM) layer (SQLAlchemy), 
+            # Alembic schema migrations, and complex raw SQL aggregations are 
+            # specifically tuned, heavily optimized, and exhaustively tested 
+            # exclusively against PostgreSQL. We natively rely on specific 
+            # PostgreSQL dialects and functions that do not translate properly.
+            # 
+            # Therefore, we must explicitly mandate that the connection string 
+            # utilizes the 'postgresql://' or 'postgres://' URI scheme.
+            
+            elif not (db_url_normalized.startswith('postgresql://') or 
+                      db_url_normalized.startswith('postgres://')):
+                
+                # We have detected a non-PostgreSQL connection string.
+                # We attempt to safely extract the specific protocol/scheme they 
+                # attempted to use for more accurate and helpful error reporting.
+                # We use a safe split approach to handle badly malformed URLs 
+                # gracefully without causing a secondary exception.
+                
+                if '://' in db_url_normalized:
+                    attempted_scheme = db_url_normalized.split('://')[0]
+                else:
+                    attempted_scheme = 'Unknown/Malformed Protocol'
+                
+                postgres_error_message = (
+                    "\n"
+                    "================================================================================\n"
+                    "UNSUPPORTED DATABASE DRIVER ERROR [PRODUCTION ENVIRONMENT]\n"
+                    "================================================================================\n"
+                    f"FATAL STARTUP ABORTED: The application detected an unsupported database \n"
+                    f"connection scheme: '{attempted_scheme}'\n\n"
+                    f"Current DATABASE_URL: '{raw_db_url}'\n\n"
+                    "--- WHY THIS FAILED ---\n"
+                    "This application's data integrity layer, migration scripts, and query \n"
+                    "performance optimizations are strictly coupled to PostgreSQL. We utilize \n"
+                    "PostgreSQL-specific SQL dialects, advanced data types (like native JSONB \n"
+                    "and arrays), and specialized indexing strategies (like GIN/GiST). \n\n"
+                    "Using alternative database engines like MySQL, SQL Server, or MariaDB is \n"
+                    "architecturally incompatible and not officially supported. Attempting to \n"
+                    "do so will result in immediate runtime SQL syntax and execution errors.\n\n"
+                    "--- HOW TO REMEDIATE THIS ---\n"
+                    "  Please ensure your DATABASE_URL begins explicitly with 'postgresql://' \n"
+                    "  or 'postgres://'. If you are utilizing a managed cloud database service, \n"
+                    "  please consult their administration documentation to obtain the correct \n"
+                    "  PostgreSQL connection URI format.\n"
+                    "================================================================================"
+                )
+                
+                # Append the unsupported driver error to the validation sequence.
+                errors.append(postgres_error_message)
+                
+            # -----------------------------------------------------------------
+            # VALIDATION STEP 3: ENFORCE AUTHENTICATION CREDENTIALS (HEURISTIC)
+            # -----------------------------------------------------------------
+            # A structurally valid PostgreSQL URL might look like: 
+            # postgresql://localhost/production_db
+            # 
+            # This implicitly indicates an attempt to connect to the database 
+            # without providing a specific username or password, relying either 
+            # on OS-level peer authentication or an open, unsecured database.
+            # 
+            # In a secure cloud environment, this is almost universally a severe 
+            # misconfiguration, indicating that the deployment orchestration 
+            # forgot to inject the secret database credentials.
+            # 
+            # We enforce the presence of the '@' symbol within the URI as a 
+            # lightweight heuristic to ensure that some form of credentialed 
+            # routing is occurring in the connection string.
+            
+            elif '@' not in db_url_normalized:
+                
+                # While it is technically possible (though exceedingly rare) to 
+                # run a production database securely via Unix domain sockets 
+                # without an '@', it violates our internal security baselines.
+                # Therefore, we enforce this as a hard error.
+                
+                auth_warning_message = (
+                    "\n"
+                    "================================================================================\n"
+                    "INSECURE DATABASE CONNECTION ERROR [PRODUCTION ENVIRONMENT]\n"
+                    "================================================================================\n"
+                    "FATAL STARTUP ABORTED: The provided PostgreSQL DATABASE_URL appears to be \n"
+                    "missing explicit authentication credentials (username and password).\n\n"
+                    "--- WHY THIS WAS FLAGGED ---\n"
+                    "Production database connections must never rely on passwordless \n"
+                    "authentication or implicit local trust unless utilizing very specific, \n"
+                    "managed IAM-based authentication mechanisms (which are handled differently). \n\n"
+                    "A standard, secure connection string must explicitly include credentials \n"
+                    "following the standard format:\n"
+                    "  postgresql://[username]:[password]@[host]:[port]/[database_name]\n\n"
+                    "--- HOW TO REMEDIATE THIS ---\n"
+                    "  Verify your environment configuration and ensure that you have not \n"
+                    "  accidentally provided a connection string that strips out or omits \n"
+                    "  the necessary security credentials.\n"
+                    "================================================================================"
+                )
+                
+                # Append this security validation failure to strictly enforce 
+                # our infrastructure-as-code best practices.
+                errors.append(auth_warning_message)
+                
+        # =====================================================================
+        # END OF DATABASE CONFIGURATION VALIDATION BLOCK
+        # =====================================================================
         
         # Validate server configuration
         if self.server.port < 1 or self.server.port > 65535:
