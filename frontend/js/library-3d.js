@@ -1334,6 +1334,19 @@ class BookshelfRenderer3D {
             });
         }
 
+        // Preview Button — opens the Google Books Embedded Viewer
+        const previewBtnLib = document.getElementById('modal-preview-btn-lib');
+        if (previewBtnLib) {
+            const newPreviewBtn = previewBtnLib.cloneNode(true);
+            previewBtnLib.parentNode.replaceChild(newPreviewBtn, previewBtnLib);
+
+            newPreviewBtn.addEventListener('click', () => {
+                if (window.BookPreview && book.id) {
+                    window.BookPreview.open(book.id, book.title || 'Book Preview');
+                }
+            });
+        }
+
         // Show modal and manage focus
         if (this.modal) {
             this.modal.classList.add('active');
