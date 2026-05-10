@@ -178,6 +178,13 @@
                         <span class="tooltip-stars" id="tooltip-stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
                         <span class="tooltip-rating-text" id="tooltip-rating-text">4.2</span>
                     </div>
+                    <!-- Reading progress shown in tooltip for currently-reading books -->
+                    <div class="tooltip-progress" id="tooltip-progress" style="display:none;">
+                        <div class="tooltip-progress-bar-track">
+                            <div class="tooltip-progress-bar-fill" id="tooltip-progress-fill"></div>
+                        </div>
+                        <span class="tooltip-progress-label" id="tooltip-progress-label"></span>
+                    </div>
                 </div>
             </div>
             <div class="tooltip-description" id="tooltip-description"></div>
@@ -273,6 +280,60 @@
                                 <button class="action-btn-secondary library-share-btn" id="modal-share-btn-lib"
                                     title="Share book">
                                     <i class="fa-solid fa-share-nodes"></i> Share
+                                </button>
+                            </div>
+
+                            <!-- Reading Progress Tracker -->
+                            <div class="reading-progress-tracker" id="modal-progress-section" style="display:none;">
+                                <div class="progress-tracker-header">
+                                    <i class="fa-solid fa-book-open-reader"></i>
+                                    <span class="progress-tracker-title">Reading Progress</span>
+                                    <span class="progress-percent-badge" id="modal-progress-badge">0%</span>
+                                </div>
+
+                                <!-- Mode toggle: percentage vs pages -->
+                                <div class="progress-mode-toggle">
+                                    <button class="progress-mode-btn active" id="progress-mode-pct" data-mode="percent">% Done</button>
+                                    <button class="progress-mode-btn" id="progress-mode-pages" data-mode="pages">Pages</button>
+                                </div>
+
+                                <!-- Percentage mode -->
+                                <div class="progress-input-group" id="progress-pct-group">
+                                    <input type="range" min="0" max="100" value="0"
+                                        class="progress-range-slider" id="modal-progress-slider"
+                                        aria-label="Reading progress percentage">
+                                    <div class="progress-bar-track">
+                                        <div class="progress-bar-fill" id="modal-progress-bar"></div>
+                                    </div>
+                                    <div class="progress-range-labels">
+                                        <span>0%</span>
+                                        <span id="modal-progress-value">0%</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+
+                                <!-- Pages mode -->
+                                <div class="progress-input-group" id="progress-pages-group" style="display:none;">
+                                    <div class="pages-input-row">
+                                        <div class="pages-field">
+                                            <label for="modal-pages-read">Pages read</label>
+                                            <input type="number" id="modal-pages-read" min="0" value="0"
+                                                class="pages-number-input" aria-label="Pages read">
+                                        </div>
+                                        <span class="pages-divider">of</span>
+                                        <div class="pages-field">
+                                            <label for="modal-pages-total">Total pages</label>
+                                            <input type="number" id="modal-pages-total" min="1" value="300"
+                                                class="pages-number-input" aria-label="Total pages">
+                                        </div>
+                                    </div>
+                                    <div class="progress-bar-track" style="margin-top:0.5rem;">
+                                        <div class="progress-bar-fill" id="modal-pages-bar"></div>
+                                    </div>
+                                </div>
+
+                                <button class="progress-save-btn" id="modal-progress-save">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save Progress
                                 </button>
                             </div>
 
