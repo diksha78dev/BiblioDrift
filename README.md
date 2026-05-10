@@ -1,8 +1,8 @@
 # 🌌 BiblioDrift — Drift Through Stories, Not Screens
 
 [![Live App](https://img.shields.io/badge/🌍%20Live%20App-Explore%20Now-5314C4?style=for-the-badge&logo=netlify)](https://bibliodrift-dm.netlify.app/)
-[![NSoC 2026](https://img.shields.io/badge/NSoC-2026-blue?style=for-the-badge)](Open-Source-Event-Guidelines.md)
-[![GSSOC 2026](https://img.shields.io/badge/GSSoC-2026-purple?style=for-the-badge)](Open-Source-Event-Guidelines.md)
+[![NSoC 2026](https://img.shields.io/badge/NSoC-2026-blue?style=for-the-badge)](docs/Open-Source-Event-Guidelines.md)
+[![GSSOC 2026](https://img.shields.io/badge/GSSoC-2026-purple?style=for-the-badge)](docs/Open-Source-Event-Guidelines.md)
 
 > **"Find yourself in the pages."**  
 > A calm, immersive, AI-powered book discovery experience.
