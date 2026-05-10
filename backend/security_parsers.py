@@ -32,7 +32,7 @@ def validate_content_type(allowed_types: Optional[list] = None) -> Tuple[bool, O
         Tuple[bool, Optional[str]]: (is_valid, error_message)
     """
     if allowed_types is None:
-        allowed_types = ['application/json']
+        allowed_types = ['application/json', 'application/x-www-form-urlencoded']
     
     content_type = request.content_type
     
