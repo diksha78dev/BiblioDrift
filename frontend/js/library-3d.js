@@ -265,6 +265,39 @@ class BookshelfRenderer3D {
         this.currentView = 'shelves'; // 'shelves' or 'constellation'
         this.constellationSimulation = null; // Store D3 simulation
 
+        // ====================================================================
+        // THREE.JS SCENE STATE & RESOURCE TRACKING
+        // ====================================================================
+        // The following properties are dedicated to tracking the 3D rendering 
+        // context of our bookshelf. By maintaining centralized arrays for 
+        // geometries, materials, and textures, we can systematically iterate 
+        // through them during the component unmount phase.
+        //
+        // Why this matters:
+        // Three.js objects (like THREE.BufferGeometry and THREE.Material)
+        // are uploaded to the GPU as WebGL resources. They are explicitly NOT
+        // managed by standard JavaScript Garbage Collection. If we lose the
+        // reference to a mesh without calling `.dispose()`, the GPU memory
+        // is permanently lost for the session, leading to "Aw, Snap!" crashes.
+        // ====================================================================
+        
+        // Core Three.js Structural Components
+        this.threeScene = null;
+        this.threeCamera = null;
+        this.threeRenderer = null;
+        this.threeAnimationId = null;
+        
+        // Explicit Resource Arrays for WebGL Garbage Collection
+        // These arrays must be populated whenever a new resource is instantiated
+        this.threeMeshes = [];      // Track all interactive book meshes for scene removal
+        this.threeGeometries = [];  // Track loaded geometries (Box, Plane, etc.) for disposal
+        this.threeMaterials = [];   // Track loaded materials (Standard, Basic, etc.) for disposal
+        this.threeTextures = [];    // Track loaded textures (Cover images, normals) for disposal
+        this.threeLights = [];      // Track scene lights (Ambient, Point, Directional) for disposal
+        this.threeHelpers = [];     // Track developer helpers (AxesHelper, GridHelper) 
+
+        // ====================================================================
+
         // Create live region for screen reader announcements
         this.liveRegion = document.createElement('div');
         this.liveRegion.setAttribute('aria-live', 'polite');
@@ -1630,6 +1663,269 @@ class BookshelfRenderer3D {
             event.subject.fx = null;
             event.subject.fy = null;
         }
+    }
+
+    /**
+     * ============================================================================
+     * COMPONENT UNMOUNT & MEMORY MANAGEMENT (THREE.JS GRACEFUL DISPOSAL)
+     * ============================================================================
+     * 
+     * This method is absolutely critical for preventing severe memory leaks in 
+     * single-page applications or when navigating away from the 3D bookshelf view.
+     * WebGL contexts and Three.js objects (geometries, materials, textures) are 
+     * explicitly NOT automatically garbage collected by the browser when removed 
+     * from the DOM.
+     * 
+     * Failure to systematically dispose of these specific WebGL resources leads to 
+     * runaway GPU memory consumption, severe application input lag, and eventually 
+     * browser tab crashes (the infamous Chrome "Aw, Snap!" screen).
+     * 
+     * Usage:
+     * Call this `destroy()` method whenever the 3D bookshelf component unmounts, 
+     * or when forcibly destroying the scene to rebuild it dynamically.
+     * 
+     * Reference: https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
+     * ============================================================================
+     */
+    destroy() {
+        console.warn('[BookshelfRenderer3D] Commencing graceful teardown of 3D scene and WebGL resources...');
+
+        // --------------------------------------------------------------------
+        // Step 1: Halt Render Loops
+        // --------------------------------------------------------------------
+        // Cancel the main animation frame loop to prevent further rendering calls.
+        // This is the first step to freeze the state and prevent rendering errors 
+        // during the teardown sequence as objects are being actively removed.
+        // --------------------------------------------------------------------
+        if (this.threeAnimationId !== null) {
+            cancelAnimationFrame(this.threeAnimationId);
+            this.threeAnimationId = null;
+            console.log('[BookshelfRenderer3D] Animation loop cancelled successfully.');
+        }
+
+        // Stop D3 Force Simulation (Vibe Constellation view)
+        // The D3 simulation relies on recursive ticks that can also leak CPU cycles
+        if (this.constellationSimulation) {
+            this.constellationSimulation.stop();
+            this.constellationSimulation = null;
+            console.log('[BookshelfRenderer3D] D3 physics simulation stopped.');
+        }
+
+        // --------------------------------------------------------------------
+        // Step 2: Clear DOM Event Listeners & Timeouts
+        // --------------------------------------------------------------------
+        // We ensure tooltips and modals do not hold dangling references
+        // to our data structures, which would prevent standard JS GC.
+        // --------------------------------------------------------------------
+        if (this.tooltipTimeout) {
+            clearTimeout(this.tooltipTimeout);
+            this.tooltipTimeout = null;
+        }
+
+        // --------------------------------------------------------------------
+        // Step 3: Dispose of Three.js Geometries
+        // --------------------------------------------------------------------
+        // Geometries hold vertex data (positions, normals, UV coordinates) on the GPU.
+        // They take up significant VRAM and must be manually purged.
+        // --------------------------------------------------------------------
+        if (this.threeGeometries && this.threeGeometries.length > 0) {
+            let geomCount = 0;
+            
+            this.threeGeometries.forEach(geometry => {
+                if (geometry && typeof geometry.dispose === 'function') {
+                    geometry.dispose();
+                    geomCount++;
+                }
+            });
+            
+            console.log(`[BookshelfRenderer3D] Successfully disposed ${geomCount} Three.js geometries.`);
+            this.threeGeometries = []; // Reset the tracking array
+        }
+
+        // --------------------------------------------------------------------
+        // Step 4: Dispose of Three.js Textures
+        // --------------------------------------------------------------------
+        // Textures (like high-res book covers and normal maps) are often the largest 
+        // consumers of GPU memory in a 3D application. We must iterate through all
+        // loaded image textures and call dispose.
+        // --------------------------------------------------------------------
+        if (this.threeTextures && this.threeTextures.length > 0) {
+            let texCount = 0;
+            
+            this.threeTextures.forEach(texture => {
+                if (texture && typeof texture.dispose === 'function') {
+                    texture.dispose();
+                    texCount++;
+                }
+            });
+            
+            console.log(`[BookshelfRenderer3D] Successfully disposed ${texCount} Three.js textures.`);
+            this.threeTextures = []; // Reset the tracking array
+        }
+
+        // --------------------------------------------------------------------
+        // Step 5: Dispose of Three.js Materials
+        // --------------------------------------------------------------------
+        // Materials define how light interacts with geometries. 
+        // Note: Materials often contain maps (textures) which we just disposed of above.
+        // --------------------------------------------------------------------
+        if (this.threeMaterials && this.threeMaterials.length > 0) {
+            let matCount = 0;
+            
+            this.threeMaterials.forEach(material => {
+                if (material) {
+                    // Sometimes materials are arrays (e.g., for different faces of a cube geometry)
+                    // We must handle both single materials and multi-materials.
+                    if (Array.isArray(material)) {
+                        material.forEach(m => {
+                            if (m && typeof m.dispose === 'function') {
+                                m.dispose();
+                            }
+                        });
+                    } else if (typeof material.dispose === 'function') {
+                        material.dispose();
+                    }
+                    matCount++;
+                }
+            });
+            
+            console.log(`[BookshelfRenderer3D] Successfully disposed ${matCount} Three.js materials.`);
+            this.threeMaterials = []; // Reset the tracking array
+        }
+
+        // --------------------------------------------------------------------
+        // Step 6: Clear Meshes and Purge Scene Graph
+        // --------------------------------------------------------------------
+        // Removing objects from the scene graph ensures they aren't processed 
+        // by the renderer. We must also sever any user data bindings.
+        // --------------------------------------------------------------------
+        if (this.threeScene) {
+            
+            // First pass: systematically remove our tracked interactive meshes
+            if (this.threeMeshes && this.threeMeshes.length > 0) {
+                this.threeMeshes.forEach(mesh => {
+                    if (mesh) {
+                        this.threeScene.remove(mesh);
+                        
+                        // Break references to custom data attached to the mesh
+                        // This prevents closures from holding onto massive data chunks
+                        if (mesh.userData) {
+                            mesh.userData = {};
+                        }
+                    }
+                });
+                
+                this.threeMeshes = [];
+            }
+            
+            // Second pass: Remove active scene lights (Directional, Ambient, etc.)
+            if (this.threeLights && this.threeLights.length > 0) {
+                this.threeLights.forEach(light => {
+                    if (light) {
+                        this.threeScene.remove(light);
+                        
+                        // Certain lights (like rect area lights or shadow maps) 
+                        // might have a dispose method that needs to be called.
+                        if (typeof light.dispose === 'function') {
+                            light.dispose();
+                        }
+                    }
+                });
+                
+                this.threeLights = [];
+            }
+            
+            // Third pass: Remove active helpers (Grid, Axes, Camera helpers)
+            if (this.threeHelpers && this.threeHelpers.length > 0) {
+                this.threeHelpers.forEach(helper => {
+                    if (helper) {
+                        this.threeScene.remove(helper);
+                        if (typeof helper.dispose === 'function') {
+                            helper.dispose();
+                        }
+                    }
+                });
+                
+                this.threeHelpers = [];
+            }
+
+            // Fourth pass: Force clear all remaining children from the scene 
+            // just to be absolutely safe. This catches any untracked objects or nested groups.
+            while(this.threeScene.children.length > 0){ 
+                const child = this.threeScene.children[0];
+                this.threeScene.remove(child);
+            }
+            
+            // Finally, nullify the scene reference entirely
+            this.threeScene = null;
+            console.log('[BookshelfRenderer3D] Three.js Scene fully cleared and nullified.');
+        }
+
+        // --------------------------------------------------------------------
+        // Step 7: Destruct WebGLRenderer & Force Context Loss
+        // --------------------------------------------------------------------
+        // This is the most crucial step for freeing the WebGL context and 
+        // releasing the GPU memory lock back to the operating system.
+        // --------------------------------------------------------------------
+        if (this.threeRenderer) {
+            
+            // Remove the renderer's canvas element from the DOM tree
+            if (this.threeRenderer.domElement && this.threeRenderer.domElement.parentNode) {
+                this.threeRenderer.domElement.parentNode.removeChild(this.threeRenderer.domElement);
+                console.log('[BookshelfRenderer3D] WebGL canvas explicitly removed from DOM.');
+            }
+            
+            // Force the renderer to dispose of its internal state and buffers
+            if (typeof this.threeRenderer.dispose === 'function') {
+                this.threeRenderer.dispose();
+            }
+            
+            // If the WebGL context is specifically exposed, force an explicit context loss.
+            // This is a browser API that tells the GPU process that we are definitively 
+            // done with this context, bypassing the sometimes sluggish GC.
+            if (typeof this.threeRenderer.getContext === 'function') {
+                const gl = this.threeRenderer.getContext();
+                if (gl && typeof gl.getExtension === 'function') {
+                    const loseContext = gl.getExtension('WEBGL_lose_context');
+                    if (loseContext) {
+                        loseContext.loseContext();
+                        console.log('[BookshelfRenderer3D] Explicit WEBGL_lose_context triggered.');
+                    }
+                }
+            }
+            
+            // Clear the renderer references
+            this.threeRenderer.domElement = null;
+            this.threeRenderer = null;
+            console.log('[BookshelfRenderer3D] WebGLRenderer fully disposed.');
+        }
+
+        // --------------------------------------------------------------------
+        // Step 8: Nullify Camera and Remaining Structural References
+        // --------------------------------------------------------------------
+        // This helps the JavaScript garbage collector do its job effectively
+        // by breaking the final object references.
+        // --------------------------------------------------------------------
+        this.threeCamera = null;
+        this.currentBook = null;
+
+        // --------------------------------------------------------------------
+        // Step 9: Clean Up Global Listeners
+        // --------------------------------------------------------------------
+        // If there were any window resize or mouse move listeners attached 
+        // explicitly to the window or document for 3D interactions, remove them.
+        // --------------------------------------------------------------------
+        if (this._onWindowResize) {
+            window.removeEventListener('resize', this._onWindowResize);
+            this._onWindowResize = null;
+        }
+
+        if (this._onMouseMove) {
+            window.removeEventListener('mousemove', this._onMouseMove);
+            this._onMouseMove = null;
+        }
+
+        console.info('[BookshelfRenderer3D] Teardown complete. GPU memory leak effectively prevented.');
     }
 }
 
