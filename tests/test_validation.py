@@ -133,7 +133,7 @@ def main():
     test_validator(
         RegisterRequest,
         "RegisterRequest",
-        {"username": "testuser", "email": "test@example.com", "password": "password123"},
+        {"username": "testuser", "email": "test@example.com", "password": "Password123!"},
         {"username": "ab", "email": "invalid-email", "password": "123"}
     )
     

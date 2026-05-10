@@ -180,7 +180,7 @@ class RegisterRequest(BaseModel):
     """Request schema for POST /api/v1/register endpoint."""
     username: str = Field(..., min_length=3, max_length=50, description="Username (3-50 characters)")
     email: EmailStr = Field(..., description="Valid email address")
-    password: str = Field(..., min_length=6, max_length=100, description="Password (minimum 6 characters)")
+    password: str = Field(..., min_length=8, max_length=100, description="Password (minimum 8 characters)")
     
     @field_validator('username')
     @classmethod
@@ -189,6 +189,18 @@ class RegisterRequest(BaseModel):
         v = v.strip()
         if not v.replace('_', '').isalnum():
             raise ValueError('Username must contain only letters, numbers, and underscores.')
+        return v
+
+    @field_validator('password')
+    @classmethod
+    def password_complexity(cls, v: str) -> str:
+        """Ensure password meets complexity requirements."""
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain at least one number')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Password must contain at least one special character')
         return v
 
 
