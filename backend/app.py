@@ -7,6 +7,8 @@ from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required, 
     get_jwt_identity, set_access_cookies, unset_jwt_cookies
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
@@ -123,6 +125,21 @@ CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5500", "http://l
 
 # Initialize cache service
 cache_service.init_app(app)
+
+# =====================================================================
+# SECURITY COMPLIANCE UPDATE: RATE LIMITING
+# Implementing Flask-Limiter to enforce strict request limits on
+# sensitive endpoints (like authentication).
+# This mitigates credential stuffing and brute-force attacks by limiting
+# the number of attempts a single IP address can make.
+# We set generic defaults but override them on specific high-risk routes.
+# =====================================================================
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 @app.errorhandler(404)
 def page_not_found(e: Exception):
@@ -1006,7 +1023,7 @@ def sync_library():
 # Finally, JWT access cookies are locked and loaded on the response object.
 # =========================================================================
 @app.route('/api/v1/register', methods=['POST'])
-@rate_limit('auth')
+@limiter.limit("5 per minute")
 def register():
     """Register a new user and return JWT token."""
     from sqlalchemy.exc import IntegrityError
@@ -1052,7 +1069,7 @@ def register():
         return internal_error(str(e))
 
 @app.route('/api/v1/login', methods=['POST'])
-@rate_limit('auth')
+@limiter.limit("5 per minute")
 def login():
     """Authenticate user and return JWT token."""
     from exceptions import DatabaseQueryError, ValidationException
@@ -2839,7 +2856,7 @@ def sync_library():
 # Finally, JWT access cookies are locked and loaded on the response object.
 # =========================================================================
 @app.route('/api/v1/register', methods=['POST'])
-@rate_limit('auth')
+@limiter.limit("5 per minute")
 def register():
     """Register a new user and return JWT token."""
     from sqlalchemy.exc import IntegrityError
@@ -2885,7 +2902,7 @@ def register():
         return internal_error(str(e))
 
 @app.route('/api/v1/login', methods=['POST'])
-@rate_limit('auth')
+@limiter.limit("5 per minute")
 def login():
     """Authenticate user and return JWT token."""
     from exceptions import DatabaseQueryError, ValidationException
