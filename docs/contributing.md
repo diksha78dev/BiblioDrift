@@ -79,7 +79,7 @@ When proposing an enhancement, describe:
 
 ## Notes on Documentation
 
-- The main project overview lives in [PROJECT_DETAILS.md](PROJECT_DETAILS.md).
+- The main project overview lives in [README.md](../README.md).
 - If you need to explain setup or workflows, update this file or the README.
 
 ## License

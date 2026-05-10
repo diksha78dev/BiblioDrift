@@ -229,13 +229,15 @@ function getCSRFToken() {
     }
 
     // Try cookie
-    const name = 'CSRF_TOKEN=';
+    const name = 'CSRF_TOKEN';
     const decodedCookie = decodeURIComponent(document.cookie);
     const cookieArray = decodedCookie.split(';');
     for (let i = 0; i < cookieArray.length; i++) {
         let cookie = cookieArray[i].trim();
-        if (cookie.indexOf(name) === 0) {
-            return cookie.substring(name.length);
+        // Properly check if this cookie starts with the name and has = separator
+        if (cookie.startsWith(name + '=')) {
+            // Extract value after "CSRF_TOKEN="
+            return cookie.substring(name.length + 1);
         }
     }
 

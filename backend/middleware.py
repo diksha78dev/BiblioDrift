@@ -145,7 +145,11 @@ def safe_request_handler(
             # Content-Type validation
             if validate_content_type and request.method not in ['GET', 'HEAD']:
                 ct = request.content_type
-                if not ct or ct.split(';')[0].strip() not in ['application/json']:
+                allowed = ['application/json'] if require_json else [
+                    'application/json',
+                    'application/x-www-form-urlencoded'
+                ]
+                if not ct or ct.split(';')[0].strip() not in allowed:
                     logger.warning(f"Content-Type validation failed for {request.path}")
                     return invalid_json_error("Invalid or missing Content-Type header")
             
