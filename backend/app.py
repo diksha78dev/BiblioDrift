@@ -880,8 +880,7 @@ def remove_from_library(item_id):
         if str(item.user_id) != str(current_user_id):
             return forbidden_error("Cannot delete another user's library item")
             
-        db.session.delete(item)
-        db.session.commit()
+        item.soft_delete()
         return success_response(data={"message": "Item removed"})
     except SQLAlchemyError as e:
         logger.error(f"Database error removing from library: {e}")
@@ -1412,8 +1411,7 @@ def delete_collection(collection_id):
         if str(collection.user_id) != str(current_user_id):
             return forbidden_error("Unauthorized")
         
-        db.session.delete(collection)
-        db.session.commit()
+        collection.soft_delete()
         return jsonify({"message": "Collection deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
@@ -1507,8 +1505,7 @@ def remove_book_from_collection(collection_id, book_id):
         if not item:
             return jsonify({"error": "Book not found in collection"}), 404
         
-        db.session.delete(item)
-        db.session.commit()
+        item.soft_delete()
         return jsonify({"message": "Book removed from collection"}), 200
     except Exception as e:
         db.session.rollback()
@@ -1656,8 +1653,7 @@ def delete_review(review_id):
         if str(review.user_id) != str(current_user_id):
             return forbidden_error("Unauthorized - you can only delete your own reviews")
         
-        db.session.delete(review)
-        db.session.commit()
+        review.soft_delete()
         return jsonify({"message": "Review deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
@@ -2741,8 +2737,7 @@ def remove_from_library(item_id):
         if str(item.user_id) != str(current_user_id):
             return forbidden_error("Cannot delete another user's library item")
             
-        db.session.delete(item)
-        db.session.commit()
+        item.soft_delete()
         return success_response(data={"message": "Item removed"})
     except SQLAlchemyError as e:
         logger.error(f"Database error removing from library: {e}")
@@ -3276,8 +3271,7 @@ def delete_collection(collection_id):
         if str(collection.user_id) != str(current_user_id):
             return jsonify({"error": "Unauthorized"}), 403
         
-        db.session.delete(collection)
-        db.session.commit()
+        collection.soft_delete()
         return jsonify({"message": "Collection deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
@@ -3371,8 +3365,7 @@ def remove_book_from_collection(collection_id, book_id):
         if not item:
             return jsonify({"error": "Book not found in collection"}), 404
         
-        db.session.delete(item)
-        db.session.commit()
+        item.soft_delete()
         return jsonify({"message": "Book removed from collection"}), 200
     except Exception as e:
         db.session.rollback()
@@ -3520,8 +3513,7 @@ def delete_review(review_id):
         if str(review.user_id) != str(current_user_id):
             return jsonify({"error": "Unauthorized - you can only delete your own reviews"}), 403
         
-        db.session.delete(review)
-        db.session.commit()
+        review.soft_delete()
         return jsonify({"message": "Review deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
