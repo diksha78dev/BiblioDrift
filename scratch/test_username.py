@@ -13,7 +13,7 @@ import json
 
 def test_username(username):
     print(f"Testing username: '{username}'")
-    data = {"username": username, "email": "test@example.com", "password": "password123"}
+    data = {"username": username, "email": "test@example.com", "password": "Password123!"}
     is_valid, result = validate_request(RegisterRequest, data)
     if is_valid:
         print(f"[VALID] {result.username}")

@@ -185,7 +185,7 @@ class RegisterRequest(BaseModel):
     """Request schema for POST /api/v1/register endpoint."""
     username: str = Field(..., min_length=3, max_length=50, description="Username (3-50 characters)")
     email: EmailStr = Field(..., description="Valid email address")
-    password: str = Field(..., min_length=6, max_length=100, description="Password (minimum 6 characters)")
+    password: str = Field(..., min_length=8, max_length=100, description="Password (minimum 8 characters)")
     
     @field_validator('username')
     @classmethod
@@ -195,7 +195,6 @@ class RegisterRequest(BaseModel):
         if not v.replace('_', '').isalnum():
             raise ValueError('Username must contain only letters, numbers, and underscores.')
         return v
-
 
 class LoginRequest(BaseModel):
     """Request schema for POST /api/v1/login endpoint."""
