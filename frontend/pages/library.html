@@ -22,6 +22,13 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" href="../assets/images/biblioDrift_favicon.png" type="image/png">
+    <!-- PWA -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#2c2420">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BiblioDrift">
+    <link rel="apple-touch-icon" href="../assets/images/biblioDrift_favicon.png">
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 
@@ -193,6 +200,13 @@
                         <span class="tooltip-stars" id="tooltip-stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
                         <span class="tooltip-rating-text" id="tooltip-rating-text">4.2</span>
                     </div>
+                    <!-- Reading progress shown in tooltip for currently-reading books -->
+                    <div class="tooltip-progress" id="tooltip-progress" style="display:none;">
+                        <div class="tooltip-progress-bar-track">
+                            <div class="tooltip-progress-bar-fill" id="tooltip-progress-fill"></div>
+                        </div>
+                        <span class="tooltip-progress-label" id="tooltip-progress-label"></span>
+                    </div>
                 </div>
             </div>
             <div class="tooltip-description" id="tooltip-description"></div>
@@ -289,6 +303,64 @@
                                     title="Share book">
                                     <i class="fa-solid fa-share-nodes"></i> Share
                                 </button>
+                                <button class="btn-preview" id="modal-preview-btn-lib"
+                                    title="Preview this book">
+                                    <i class="fa-solid fa-book-open"></i> Preview
+                                </button>
+                            </div>
+
+                            <!-- Reading Progress Tracker -->
+                            <div class="reading-progress-tracker" id="modal-progress-section" style="display:none;">
+                                <div class="progress-tracker-header">
+                                    <i class="fa-solid fa-book-open-reader"></i>
+                                    <span class="progress-tracker-title">Reading Progress</span>
+                                    <span class="progress-percent-badge" id="modal-progress-badge">0%</span>
+                                </div>
+
+                                <!-- Mode toggle: percentage vs pages -->
+                                <div class="progress-mode-toggle">
+                                    <button class="progress-mode-btn active" id="progress-mode-pct" data-mode="percent">% Done</button>
+                                    <button class="progress-mode-btn" id="progress-mode-pages" data-mode="pages">Pages</button>
+                                </div>
+
+                                <!-- Percentage mode -->
+                                <div class="progress-input-group" id="progress-pct-group">
+                                    <input type="range" min="0" max="100" value="0"
+                                        class="progress-range-slider" id="modal-progress-slider"
+                                        aria-label="Reading progress percentage">
+                                    <div class="progress-bar-track">
+                                        <div class="progress-bar-fill" id="modal-progress-bar"></div>
+                                    </div>
+                                    <div class="progress-range-labels">
+                                        <span>0%</span>
+                                        <span id="modal-progress-value">0%</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+
+                                <!-- Pages mode -->
+                                <div class="progress-input-group" id="progress-pages-group" style="display:none;">
+                                    <div class="pages-input-row">
+                                        <div class="pages-field">
+                                            <label for="modal-pages-read">Pages read</label>
+                                            <input type="number" id="modal-pages-read" min="0" value="0"
+                                                class="pages-number-input" aria-label="Pages read">
+                                        </div>
+                                        <span class="pages-divider">of</span>
+                                        <div class="pages-field">
+                                            <label for="modal-pages-total">Total pages</label>
+                                            <input type="number" id="modal-pages-total" min="1" value="300"
+                                                class="pages-number-input" aria-label="Total pages">
+                                        </div>
+                                    </div>
+                                    <div class="progress-bar-track" style="margin-top:0.5rem;">
+                                        <div class="progress-bar-fill" id="modal-pages-bar"></div>
+                                    </div>
+                                </div>
+
+                                <button class="progress-save-btn" id="modal-progress-save">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save Progress
+                                </button>
                             </div>
 
                             <div class="shelf-selection-row" style="margin-top: 10px;">
@@ -318,6 +390,7 @@
     <script src="../js/config.js"></script>
     <script src="../js/library-3d.js"></script>
     <script src="../js/app.js"></script>
+    <script src="../js/book-preview.js"></script>
     <script src="../js/footer.js"></script>
     <script src="../script/header-scroll.js"></script>
 
@@ -351,6 +424,7 @@
     </div>
 
     <script src="../js/ambient.js"></script>
+    <script src="../js/pwa.js"></script>
 </body>
 
 </html>

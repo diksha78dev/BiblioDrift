@@ -75,12 +75,25 @@ def sanitize_string(text: Optional[str], max_len: int = 5000, strip_html: bool =
     
     if not text:
         return ""
-    
+    # Normalize entity-encoded input (handle &lt;script&gt; etc.)
+    try:
+        text = html.unescape(text)
+    except Exception:
+        # If unescape fails for any reason, continue with original text.
+        pass
+
     # Layer 1: Detect dangerous patterns and log
     for pattern in DANGEROUS_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE | re.DOTALL):
             logger.warning(f"Dangerous pattern detected in input: {pattern[:30]}...")
             # Don't block, but flag it
+
+    # Remove entire dangerous tag blocks (including contents) before bleach,
+    # so payload text like alert(...) does not survive tag stripping.
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<iframe[^>]*>.*?</iframe>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<embed[^>]*>.*?</embed>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<object[^>]*>.*?</object>', '', text, flags=re.IGNORECASE | re.DOTALL)
     
     # Layer 2: Use bleach for HTML sanitization (removes all dangerous tags)
     if strip_html:
@@ -218,7 +231,7 @@ def is_likely_html_attack(text: str) -> bool:
     dangerous_markers = [
         '<script', '</script',
         'javascript:',
-        'on' + ('error', 'load', 'click', 'mouseover', 'focus'),
+        'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus',
         '<iframe', '<embed', '<object',
         'data:text/html',
     ]

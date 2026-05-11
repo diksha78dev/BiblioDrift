@@ -29,6 +29,13 @@
   <!-- Security: DOMPurify for XSS prevention -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
   <link rel="icon" href="../assets/images/biblioDrift_favicon.png" type="image/png">
+  <!-- PWA -->
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#2c2420">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BiblioDrift">
+  <link rel="apple-touch-icon" href="../assets/images/biblioDrift_favicon.png">
 </head>
 
 <body>
@@ -178,6 +185,7 @@
             </div>
             <div class="modal-actions">
               <button id="modal-add-btn" class="btn-primary"><i class="fa-regular fa-heart"></i> Add to Library</button>
+              <button id="modal-preview-btn" class="btn-preview"><i class="fa-solid fa-book-open"></i> Preview</button>
               <button id="modal-share-btn" class="btn-secondary modal-share-btn"><i class="fa-solid fa-share-nodes"></i>
                 Share</button>
             </div>
@@ -232,6 +240,7 @@
 
   <script src="../js/config.js"></script>
   <script src="../js/app.js"></script>
+  <script src="../js/book-preview.js"></script>
   <script src="../script/header-scroll.js"></script>
 
 
@@ -270,6 +279,7 @@
 
   <script src="../js/ambient.js"></script>
   <script src="../js/security.js"></script>
+  <script src="../js/pwa.js"></script>
 </body>
 
 </html>
