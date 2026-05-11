@@ -814,6 +814,16 @@ class BookRenderer {
             };
         }
 
+        // Preview Button — opens the Google Books Embedded Viewer
+        const previewBtn = document.getElementById('modal-preview-btn');
+        if (previewBtn) {
+            previewBtn.onclick = () => {
+                if (window.BookPreview && book.id) {
+                    window.BookPreview.open(book.id, book.volumeInfo.title || 'Book Preview');
+                }
+            };
+        }
+
         modal.showModal();
         document.getElementById('closeModalBtn').onclick = () => modal.close();
 
@@ -2038,6 +2048,91 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 100);
         }
 
+        // =====================================================================
+        // READING PROGRESS OVERVIEW
+        // Renders a progress card for each book currently being read.
+        // =====================================================================
+        const progressGrid = document.getElementById('progress-overview-grid');
+        if (progressGrid) {
+            const currentBooks = libManager.library.current || [];
+            if (currentBooks.length === 0) {
+                progressGrid.innerHTML = '<div class="empty-state"><p>No books currently in progress. <a href="library.html">Visit your library</a> to start reading.</p></div>';
+            } else {
+                progressGrid.innerHTML = '';
+                currentBooks.forEach(book => {
+                    const title = book.volumeInfo?.title || book.title || 'Untitled';
+                    const author = (book.volumeInfo?.authors?.[0]) || book.author || 'Unknown Author';
+                    const cover = book.volumeInfo?.imageLinks?.thumbnail || book.cover || '';
+                    const progress = typeof book.progress === 'number' ? book.progress : 0;
+
+                    const card = document.createElement('div');
+                    card.className = 'progress-overview-card';
+                    card.innerHTML = `
+                        <div class="progress-card-cover">
+                            ${cover ? `<img src="${cover.replace('http:', 'https:')}" alt="${title}" loading="lazy">` : '<i class="fa-solid fa-book"></i>'}
+                        </div>
+                        <div class="progress-card-info">
+                            <div class="progress-card-title">${title}</div>
+                            <div class="progress-card-author">${author}</div>
+                            <div class="progress-card-bar-wrap">
+                                <div class="progress-card-bar-track">
+                                    <div class="progress-card-bar-fill" style="width:${progress}%"></div>
+                                </div>
+                                <span class="progress-card-pct">${progress}%</span>
+                            </div>
+                            <div class="progress-card-quick-update">
+                                <input type="range" min="0" max="100" value="${progress}"
+                                    class="progress-card-slider"
+                                    aria-label="Update reading progress for ${title}">
+                                <button class="progress-card-save-btn" data-book-id="${book.id}">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Wire up the quick-update slider
+                    const slider = card.querySelector('.progress-card-slider');
+                    const barFill = card.querySelector('.progress-card-bar-fill');
+                    const pctLabel = card.querySelector('.progress-card-pct');
+                    const saveBtn = card.querySelector('.progress-card-save-btn');
+
+                    slider.addEventListener('input', () => {
+                        const val = parseInt(slider.value);
+                        barFill.style.width = `${val}%`;
+                        pctLabel.textContent = `${val}%`;
+                    });
+
+                    saveBtn.addEventListener('click', async () => {
+                        const newProgress = parseInt(slider.value);
+                        saveBtn.disabled = true;
+                        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                        try {
+                            await libManager.updateBook(book.id, { progress: newProgress });
+                            book.progress = newProgress;
+                            saveBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                            saveBtn.style.background = '#4caf50';
+                            setTimeout(() => {
+                                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+                                saveBtn.style.background = '';
+                                saveBtn.disabled = false;
+                            }, 2000);
+                        } catch (err) {
+                            saveBtn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                            saveBtn.style.background = '#e53935';
+                            setTimeout(() => {
+                                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+                                saveBtn.style.background = '';
+                                saveBtn.disabled = false;
+                            }, 2000);
+                        }
+                    });
+
+                    progressGrid.appendChild(card);
+                });
+            }
+        }
+
         // Populate Achievements
         const achievementsGrid = document.getElementById('achievements-grid');
         achievementsGrid.innerHTML = '';
@@ -2124,6 +2219,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function handleAuth(event) {
     event.preventDefault();
     const form = event.target;
+    const btn = form.querySelector('button[type="submit"]') || document.getElementById('submitBtn');
+    const originalText = btn ? btn.innerHTML : (form.dataset.mode === 'register' ? 'Sign Up' : 'Sign In');
+
+    // 1. Immediate UI Feedback: Disable button and show loading state
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...';
+    }
+
     // Determine mode from dataset (set by our toggle logic) or default to login
     const mode = form.dataset.mode || 'login';
 
@@ -2131,11 +2235,20 @@ async function handleAuth(event) {
     const password = form.querySelector('input[type="password"]').value;
     const usernameInput = document.getElementById("username");
 
+    // Helper to reset button state on failure
+    const resetBtn = () => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    };
+
     // Validate Email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         if (typeof showToast === 'function') showToast("Enter a valid email address", "error");
         else alert("Enter a valid email address");
+        resetBtn();
         return;
     }
 
@@ -2149,6 +2262,7 @@ async function handleAuth(event) {
         if (typeof showToast === 'function')
             showToast(`Welcome, Demo User!`, "success");
 
+        // Keep button disabled during redirect delay
         setTimeout(() => {
             window.location.href = "library.html";
         }, 1000);
@@ -2169,11 +2283,6 @@ async function handleAuth(event) {
     }
 
     try {
-        const btn = form.querySelector('button');
-        const originalText = btn.textContent;
-        btn.textContent = 'Processing...';
-        btn.disabled = true;
-
         const res = await fetch(`${MOOD_API_BASE}${endpoint.replace('/api/v1', '')}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2182,9 +2291,6 @@ async function handleAuth(event) {
         });
 
         const data = await res.json();
-
-        btn.textContent = originalText;
-        btn.disabled = false;
 
         if (res.ok) {
             // Success!
@@ -2196,26 +2302,26 @@ async function handleAuth(event) {
                 showToast(`${mode === 'login' ? 'Welcome back' : 'Welcome'}, ${data.user.username}!`, "success");
 
             // SYNC LOGIC
-            // If we have a library manager exposed, use it to sync anonymous data
             if (window.libManager) {
                 if (typeof showToast === 'function') showToast("Syncing your library...", "info");
                 await window.libManager.syncLocalToBackend(data.user);
             }
 
-            // Redirect
+            // Redirect - Button remains disabled
             setTimeout(() => {
                 window.location.href = "library.html";
             }, 1000);
         } else {
+            // Authentication failed - re-enable button
             if (typeof showToast === 'function') showToast(data.error || "Authentication failed", "error");
             else alert(data.error || "Authentication failed");
+            resetBtn();
         }
     } catch (e) {
         console.error("Auth Error", e);
         if (typeof showToast === 'function') showToast("Server connection failed", "error");
         else alert("Server connection failed");
-        const btn = form.querySelector('button');
-        if (btn) btn.disabled = false;
+        resetBtn();
     }
 }
 

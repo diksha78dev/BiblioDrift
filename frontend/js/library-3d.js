@@ -264,6 +264,10 @@ class BookshelfRenderer3D {
         this.searchQuery = ''; // Default search query
         this.currentView = 'shelves'; // 'shelves' or 'constellation'
         this.constellationSimulation = null; // Store D3 simulation
+        this.cleanupCallbacks = [];
+        this.isDestroyed = false;
+        this._modalBackdropHandler = null;
+        this._escHandler = null;
 
         // Create live region for screen reader announcements
         this.liveRegion = document.createElement('div');
@@ -318,11 +322,20 @@ class BookshelfRenderer3D {
         return null;
     }
 
+    addManagedListener(target, eventName, handler, options) {
+        if (!target || typeof target.addEventListener !== 'function') {
+            return;
+        }
+
+        target.addEventListener(eventName, handler, options);
+        this.cleanupCallbacks.push(() => target.removeEventListener(eventName, handler, options));
+    }
+
     init() {
         // Sort listener
         const sortSelect = document.getElementById('library-sort');
         if (sortSelect) {
-            sortSelect.addEventListener('change', (e) => {
+            this.addManagedListener(sortSelect, 'change', (e) => {
                 this.sortCriteria = e.target.value;
                 this.refreshShelves();
             });
@@ -331,7 +344,7 @@ class BookshelfRenderer3D {
         // Filter listener
         const filterSelect = document.getElementById('library-filter');
         if (filterSelect) {
-            filterSelect.addEventListener('change', (e) => {
+            this.addManagedListener(filterSelect, 'change', (e) => {
                 this.filterCriteria = e.target.value;
                 this.refreshShelves();
             });
@@ -340,7 +353,7 @@ class BookshelfRenderer3D {
         // Search listener for "Search for a feeling..."
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
+            this.addManagedListener(searchInput, 'input', (e) => {
                 this.searchQuery = e.target.value.toLowerCase();
                 if (this.currentView === 'shelves') {
                     this.refreshShelves();
@@ -357,7 +370,7 @@ class BookshelfRenderer3D {
         const containerConstellation = document.getElementById('constellation-container');
 
         if (btnShelves && btnConstellation) {
-            btnShelves.addEventListener('click', () => {
+            this.addManagedListener(btnShelves, 'click', () => {
                 this.currentView = 'shelves';
                 btnShelves.classList.add('active-view');
                 btnShelves.classList.replace('btn-secondary', 'btn-primary');
@@ -369,7 +382,7 @@ class BookshelfRenderer3D {
                 this.refreshShelves();
             });
 
-            btnConstellation.addEventListener('click', () => {
+            this.addManagedListener(btnConstellation, 'click', () => {
                 this.currentView = 'constellation';
                 btnConstellation.classList.add('active-view');
                 btnConstellation.classList.replace('btn-secondary', 'btn-primary');
@@ -385,10 +398,10 @@ class BookshelfRenderer3D {
         // Render all shelves with sample books
         this.refreshShelves();
 
-        window.addEventListener('bibliodrift:library-manager-ready', () => {
+        this.addManagedListener(window, 'bibliodrift:library-manager-ready', () => {
             this.refreshShelves();
         });
-        window.addEventListener('bibliodrift:library-manager-synced', () => {
+        this.addManagedListener(window, 'bibliodrift:library-manager-synced', () => {
             this.refreshShelves();
         });
 
@@ -493,10 +506,12 @@ class BookshelfRenderer3D {
                     categories: b.volumeInfo.categories || [],
                     spineColor: b.spineColor,
                     moods: b.moods || [],
+                    progress: typeof b.progress === 'number' ? b.progress : 0,
+                    shelfType: shelfType,
                     reviews: []
                 };
             }
-            return { ...b, moods: b.moods || [] };
+            return { ...b, moods: b.moods || [], progress: typeof b.progress === 'number' ? b.progress : 0, shelfType };
         });
 
         // Apply Search Filter
@@ -681,6 +696,31 @@ class BookshelfRenderer3D {
             spine.appendChild(moodIcon);
         }
 
+        // Add reading progress indicator on spine for currently-reading books
+        const progress = typeof book.progress === 'number' ? book.progress : 0;
+        if (shelfType === 'current') {
+            const progressIndicator = document.createElement('div');
+            progressIndicator.className = 'spine-progress-indicator';
+            progressIndicator.setAttribute('aria-label', `${progress}% read`);
+            progressIndicator.setAttribute('title', `${progress}% read`);
+
+            const progressFill = document.createElement('div');
+            progressFill.className = 'spine-progress-fill';
+            progressFill.style.height = `${progress}%`;
+
+            progressIndicator.appendChild(progressFill);
+            spine.appendChild(progressIndicator);
+        }
+
+        // Finished badge
+        if (shelfType === 'finished') {
+            const finishedBadge = document.createElement('div');
+            finishedBadge.className = 'spine-finished-badge';
+            finishedBadge.innerHTML = '<i class="fa-solid fa-check"></i>';
+            finishedBadge.setAttribute('title', 'Finished');
+            spine.appendChild(finishedBadge);
+        }
+
         return spine;
     }
 
@@ -779,6 +819,28 @@ class BookshelfRenderer3D {
         document.getElementById('tooltip-stars').textContent = this.getStarRating(book.rating);
         document.getElementById('tooltip-rating-text').textContent = (book.rating != null ? book.rating.toFixed(1) : 'N/A');
         document.getElementById('tooltip-description').textContent = book.description.substring(0, 150) + '...';
+
+        // Show reading progress in tooltip for books in progress
+        const progressEl = document.getElementById('tooltip-progress');
+        const progressFill = document.getElementById('tooltip-progress-fill');
+        const progressLabel = document.getElementById('tooltip-progress-label');
+        const progress = typeof book.progress === 'number' ? book.progress : 0;
+
+        if (book.shelfType === 'current' && progress > 0) {
+            progressEl.style.display = 'block';
+            progressFill.style.width = `${progress}%`;
+            progressLabel.textContent = `${progress}% read`;
+        } else if (book.shelfType === 'current') {
+            progressEl.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressLabel.textContent = 'Not started';
+        } else if (book.shelfType === 'finished') {
+            progressEl.style.display = 'block';
+            progressFill.style.width = '100%';
+            progressLabel.textContent = 'Finished ✓';
+        } else {
+            progressEl.style.display = 'none';
+        }
 
         // Position tooltip
         this.moveTooltip(e);
@@ -996,6 +1058,193 @@ class BookshelfRenderer3D {
         const actionsSection = document.querySelector('.book-actions-section');
         const reviewsSection = document.querySelector('.book-reviews-section');
 
+        // 7. Reading Progress Tracker
+        const progressSection = document.getElementById('modal-progress-section');
+        const progressSlider = document.getElementById('modal-progress-slider');
+        const progressBar = document.getElementById('modal-progress-bar');
+        const progressValue = document.getElementById('modal-progress-value');
+        const progressBadge = document.getElementById('modal-progress-badge');
+        const progressSaveBtn = document.getElementById('modal-progress-save');
+        const modePctBtn = document.getElementById('progress-mode-pct');
+        const modePagesBtn = document.getElementById('progress-mode-pages');
+        const pctGroup = document.getElementById('progress-pct-group');
+        const pagesGroup = document.getElementById('progress-pages-group');
+        const pagesReadInput = document.getElementById('modal-pages-read');
+        const pagesTotalInput = document.getElementById('modal-pages-total');
+        const pagesBar = document.getElementById('modal-pages-bar');
+
+        // Find current shelf for this book
+        const storageKey = 'bibliodrift_library';
+        const localLibrary = JSON.parse(localStorage.getItem(storageKey)) || {};
+        let currentShelfForProgress = 'want';
+        ['current', 'want', 'finished'].forEach(shelf => {
+            const found = (localLibrary[shelf] || []).find(b => b.id === book.id || (b.volumeInfo && b.id === book.id));
+            if (found) currentShelfForProgress = shelf;
+        });
+
+        // Show progress tracker only for 'current' shelf books
+        if (progressSection) {
+            if (currentShelfForProgress === 'current') {
+                progressSection.style.display = 'block';
+
+                // Load existing progress
+                const currentProgress = typeof book.progress === 'number' ? book.progress : 0;
+                const totalPages = book.pageCount || book.page_count || 300;
+
+                // Sync slider and bar
+                const syncProgressUI = (pct) => {
+                    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+                    if (progressSlider) progressSlider.value = clamped;
+                    if (progressBar) progressBar.style.width = `${clamped}%`;
+                    if (progressValue) progressValue.textContent = `${clamped}%`;
+                    if (progressBadge) progressBadge.textContent = `${clamped}%`;
+                    // Sync pages input
+                    if (pagesReadInput && pagesTotalInput) {
+                        const pages = Math.round((clamped / 100) * parseInt(pagesTotalInput.value || totalPages));
+                        pagesReadInput.value = pages;
+                    }
+                    if (pagesBar) pagesBar.style.width = `${clamped}%`;
+                };
+
+                syncProgressUI(currentProgress);
+                if (pagesTotalInput) pagesTotalInput.value = totalPages;
+
+                // Mode toggle
+                const setMode = (mode) => {
+                    if (mode === 'percent') {
+                        pctGroup.style.display = 'block';
+                        pagesGroup.style.display = 'none';
+                        modePctBtn.classList.add('active');
+                        modePagesBtn.classList.remove('active');
+                    } else {
+                        pctGroup.style.display = 'none';
+                        pagesGroup.style.display = 'block';
+                        modePctBtn.classList.remove('active');
+                        modePagesBtn.classList.add('active');
+                    }
+                };
+
+                // Remove old listeners by cloning
+                if (modePctBtn) {
+                    const newPctBtn = modePctBtn.cloneNode(true);
+                    modePctBtn.parentNode.replaceChild(newPctBtn, modePctBtn);
+                    newPctBtn.addEventListener('click', () => setMode('percent'));
+                    newPctBtn.classList.add('active');
+                }
+                if (modePagesBtn) {
+                    const newPagesBtn = modePagesBtn.cloneNode(true);
+                    modePagesBtn.parentNode.replaceChild(newPagesBtn, modePagesBtn);
+                    newPagesBtn.addEventListener('click', () => setMode('pages'));
+                }
+
+                // Slider input
+                if (progressSlider) {
+                    const newSlider = progressSlider.cloneNode(true);
+                    progressSlider.parentNode.replaceChild(newSlider, progressSlider);
+                    newSlider.value = currentProgress;
+                    newSlider.addEventListener('input', () => {
+                        const pct = parseInt(newSlider.value);
+                        if (progressBar) progressBar.style.width = `${pct}%`;
+                        if (progressValue) progressValue.textContent = `${pct}%`;
+                        if (progressBadge) progressBadge.textContent = `${pct}%`;
+                        // Sync pages
+                        const total = parseInt(document.getElementById('modal-pages-total')?.value || totalPages);
+                        const pages = Math.round((pct / 100) * total);
+                        const pagesReadEl = document.getElementById('modal-pages-read');
+                        if (pagesReadEl) pagesReadEl.value = pages;
+                        if (pagesBar) pagesBar.style.width = `${pct}%`;
+                    });
+                }
+
+                // Pages inputs
+                const syncPagesInputs = () => {
+                    const pagesReadEl = document.getElementById('modal-pages-read');
+                    const pagesTotalEl = document.getElementById('modal-pages-total');
+                    const sliderEl = document.getElementById('modal-progress-slider');
+                    if (!pagesReadEl || !pagesTotalEl) return;
+                    const read = Math.max(0, parseInt(pagesReadEl.value) || 0);
+                    const total = Math.max(1, parseInt(pagesTotalEl.value) || 1);
+                    const pct = Math.min(100, Math.round((read / total) * 100));
+                    if (sliderEl) sliderEl.value = pct;
+                    if (progressBar) progressBar.style.width = `${pct}%`;
+                    if (progressValue) progressValue.textContent = `${pct}%`;
+                    if (progressBadge) progressBadge.textContent = `${pct}%`;
+                    if (pagesBar) pagesBar.style.width = `${pct}%`;
+                };
+
+                if (pagesReadInput) {
+                    const newPagesRead = pagesReadInput.cloneNode(true);
+                    pagesReadInput.parentNode.replaceChild(newPagesRead, pagesReadInput);
+                    newPagesRead.addEventListener('input', syncPagesInputs);
+                }
+                if (pagesTotalInput) {
+                    const newPagesTotal = pagesTotalInput.cloneNode(true);
+                    pagesTotalInput.parentNode.replaceChild(newPagesTotal, pagesTotalInput);
+                    newPagesTotal.value = totalPages;
+                    newPagesTotal.addEventListener('input', syncPagesInputs);
+                }
+
+                // Save button
+                if (progressSaveBtn) {
+                    const newSaveBtn = progressSaveBtn.cloneNode(true);
+                    progressSaveBtn.parentNode.replaceChild(newSaveBtn, progressSaveBtn);
+                    newSaveBtn.addEventListener('click', async () => {
+                        const sliderEl = document.getElementById('modal-progress-slider');
+                        const newProgress = sliderEl ? parseInt(sliderEl.value) : currentProgress;
+
+                        newSaveBtn.disabled = true;
+                        newSaveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+                        try {
+                            // Update via LibraryManager if available (handles backend sync)
+                            if (window.libManager && typeof window.libManager.updateBook === 'function') {
+                                await window.libManager.updateBook(book.id, { progress: newProgress });
+                            } else {
+                                // Fallback: update localStorage directly
+                                const lib = JSON.parse(localStorage.getItem('bibliodrift_library')) || {};
+                                ['current', 'want', 'finished'].forEach(shelf => {
+                                    const b = (lib[shelf] || []).find(x => x.id === book.id);
+                                    if (b) b.progress = newProgress;
+                                });
+                                localStorage.setItem('bibliodrift_library', JSON.stringify(lib));
+                            }
+
+                            // Update the book object in memory
+                            book.progress = newProgress;
+
+                            // Refresh the shelf display
+                            this.refreshShelves();
+
+                            newSaveBtn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+                            newSaveBtn.style.background = '#4caf50';
+
+                            // If 100%, auto-close modal after brief delay (book moves to finished)
+                            if (newProgress === 100) {
+                                setTimeout(() => this.closeModal(), 1500);
+                            } else {
+                                setTimeout(() => {
+                                    newSaveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Progress';
+                                    newSaveBtn.style.background = '';
+                                    newSaveBtn.disabled = false;
+                                }, 2000);
+                            }
+                        } catch (err) {
+                            console.error('Failed to save progress', err);
+                            newSaveBtn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Failed';
+                            newSaveBtn.style.background = '#e53935';
+                            setTimeout(() => {
+                                newSaveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Progress';
+                                newSaveBtn.style.background = '';
+                                newSaveBtn.disabled = false;
+                            }, 2000);
+                        }
+                    });
+                }
+            } else {
+                progressSection.style.display = 'none';
+            }
+        }
+
         // 6. AI Insight Section
         const aiNoteEl = document.getElementById('modal-ai-note');
         if (aiNoteEl) {
@@ -1050,8 +1299,11 @@ class BookshelfRenderer3D {
                 await this.moveBook(book.id, currentShelf, newShelf);
                 currentShelf = newShelf; // Update local tracker
 
-                // Close modal after move? Optional. Let's keep it open but maybe show feedback.
-                // For now, shelf re-render happens in background.
+                // Show/hide progress tracker based on new shelf
+                const progressSectionEl = document.getElementById('modal-progress-section');
+                if (progressSectionEl) {
+                    progressSectionEl.style.display = newShelf === 'current' ? 'block' : 'none';
+                }
             });
         }
 
@@ -1092,6 +1344,19 @@ class BookshelfRenderer3D {
                     console.error('Failed to copy text: ', err);
                     this.announceToScreenReader('Failed to copy book information');
                 });
+            });
+        }
+
+        // Preview Button — opens the Google Books Embedded Viewer
+        const previewBtnLib = document.getElementById('modal-preview-btn-lib');
+        if (previewBtnLib) {
+            const newPreviewBtn = previewBtnLib.cloneNode(true);
+            previewBtnLib.parentNode.replaceChild(newPreviewBtn, previewBtnLib);
+
+            newPreviewBtn.addEventListener('click', () => {
+                if (window.BookPreview && book.id) {
+                    window.BookPreview.open(book.id, book.title || 'Book Preview');
+                }
             });
         }
 
@@ -1168,22 +1433,25 @@ class BookshelfRenderer3D {
             });
         }
 
-        // Click outside to close (backdrop)
-        if (this.modal) {
-            this.modal.addEventListener('click', (e) => {
-                // If clicking the backdrop (modal container itself)
+        // Click outside to close (bind once to avoid listener leaks).
+        if (this.modal && !this._modalBackdropHandler) {
+            this._modalBackdropHandler = (e) => {
                 if (e.target === this.modal) {
                     this.closeModal();
                 }
-            });
+            };
+            this.addManagedListener(this.modal, 'click', this._modalBackdropHandler);
         }
 
-        // ESC key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.modal && this.modal.classList.contains('active')) {
-                this.closeModal();
-            }
-        });
+        // ESC key to close (bind once to avoid listener leaks).
+        if (!this._escHandler) {
+            this._escHandler = (e) => {
+                if (e.key === 'Escape' && this.modal && this.modal.classList.contains('active')) {
+                    this.closeModal();
+                }
+            };
+            this.addManagedListener(document, 'keydown', this._escHandler);
+        }
 
         // Add to library button logic
         const addBtn = document.getElementById('modal-add-btn');
@@ -1631,14 +1899,68 @@ class BookshelfRenderer3D {
             event.subject.fy = null;
         }
     }
+
+    // Cleanup method for SPA unmount/navigation.
+    destroy() {
+        if (this.isDestroyed) {
+            return;
+        }
+
+        this.isDestroyed = true;
+
+        if (this.constellationSimulation) {
+            this.constellationSimulation.stop();
+            this.constellationSimulation = null;
+        }
+
+        if (this.tooltipTimeout) {
+            clearTimeout(this.tooltipTimeout);
+            this.tooltipTimeout = null;
+        }
+
+        while (this.cleanupCallbacks.length > 0) {
+            const cleanup = this.cleanupCallbacks.pop();
+            try {
+                cleanup();
+            } catch (err) {
+                console.warn('Cleanup listener failed', err);
+            }
+        }
+
+        const constellationContainer = document.getElementById('constellation-container');
+        if (constellationContainer) {
+            constellationContainer.innerHTML = '';
+        }
+
+        if (this.modal && this.modal.classList.contains('active')) {
+            this.closeModal();
+        }
+
+        if (this.liveRegion && this.liveRegion.parentNode) {
+            this.liveRegion.parentNode.removeChild(this.liveRegion);
+        }
+
+        this.liveRegion = null;
+        this.currentBook = null;
+    }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize on library page
     if (document.getElementById('library-shelves')) {
+        if (window.bookshelf3D && typeof window.bookshelf3D.destroy === 'function') {
+            window.bookshelf3D.destroy();
+        }
+
         const renderer = new BookshelfRenderer3D();
         window.bookshelf3D = renderer;
         window.bookshelfRenderer = renderer;
+
+        window.addEventListener('pagehide', () => {
+            if (window.bookshelf3D && typeof window.bookshelf3D.destroy === 'function') {
+                window.bookshelf3D.destroy();
+            }
+        }, { once: true });
     }
 });
