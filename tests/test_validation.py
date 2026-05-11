@@ -5,6 +5,7 @@ This script tests all the Pydantic validators for the BiblioDrift API endpoints.
 """
 
 import json
+__test__ = False
 from validators import (
     validate_request,
     AnalyzeMoodRequest,

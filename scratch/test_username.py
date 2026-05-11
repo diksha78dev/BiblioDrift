@@ -1,6 +1,8 @@
 import sys
 import os
 
+__test__ = False
+
 # Add root and backend to path
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
