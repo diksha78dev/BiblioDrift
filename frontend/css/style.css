@@ -4561,8 +4561,20 @@ input:checked+.slider {
 input:checked+.slider:before {
     transform: translateX(14px);
 }
-.glass-overlay, 
-.tooltip-info,
-[class*="tooltip-"] {
+html[data-theme="night"] .glass-overlay,
+body.night-mode .glass-overlay,
+[data-theme="night"] .glass-overlay {
     background-color: #1e140c !important;
+    background: #1e140c !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="night"] .tooltip-title,
+body.night-mode .tooltip-title {
+    color: #ffffff !important;
+}
+
+html[data-theme="night"] .tooltip-author,
+body.night-mode .tooltip-author {
+    color: #cccccc !important;
 }
