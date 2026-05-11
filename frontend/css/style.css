@@ -70,7 +70,7 @@ body {
 html[data-theme="night"],
 html[data-theme="night"] body {
     background-color: #1e1a18 !important;
-    color: #e0d5cb !important;
+    color: #fff5f5 !important;
 }
 
 [data-theme="night"] header {
@@ -83,6 +83,7 @@ html[data-theme="night"] body {
     color: #e0d5cb !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
 }
+
 
 /* Global Wooden Scrollbar Styling */
 ::-webkit-scrollbar {
@@ -265,6 +266,7 @@ main {
         transform: translateY(0);
     }
 }
+
 
 .hero h1 {
     font-size: clamp(2.5rem, 8vw, 4.5rem);
@@ -1496,6 +1498,7 @@ main {
     line-height: 1.2;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -1505,6 +1508,7 @@ main {
     color: var(--text-muted);
     display: -webkit-box;
     -webkit-line-clamp: 1;
+    line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -1963,6 +1967,7 @@ main {
     margin: 0 0 0.25rem 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -2402,6 +2407,7 @@ main {
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
@@ -4554,4 +4560,9 @@ input:checked+.slider {
 
 input:checked+.slider:before {
     transform: translateX(14px);
+}
+.glass-overlay, 
+.tooltip-info,
+[class*="tooltip-"] {
+    background-color: #1e140c !important;
 }
