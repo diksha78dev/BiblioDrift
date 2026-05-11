@@ -5507,8 +5507,7 @@ input:checked+.slider:before {
 }
 
 .main-footer {
-  background: #2C3639;
-  color: #F5F5F5;
+ 
   padding: 4rem 2rem 1rem;
 }
 
@@ -5519,14 +5518,12 @@ input:checked+.slider:before {
 }
 
 .footer-container a {
-  color: #D6D3D1;
+ 
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
-.footer-container a:hover {
-   color: #CBA135;
-}
+
 
 .social-icons {
   display: flex;
