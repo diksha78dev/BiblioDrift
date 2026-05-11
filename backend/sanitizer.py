@@ -218,7 +218,7 @@ def is_likely_html_attack(text: str) -> bool:
     dangerous_markers = [
         '<script', '</script',
         'javascript:',
-        'on' + ('error', 'load', 'click', 'mouseover', 'focus'),
+        'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus',
         '<iframe', '<embed', '<object',
         'data:text/html',
     ]
