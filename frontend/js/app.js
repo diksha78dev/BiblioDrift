@@ -814,6 +814,16 @@ class BookRenderer {
             };
         }
 
+        // Preview Button — opens the Google Books Embedded Viewer
+        const previewBtn = document.getElementById('modal-preview-btn');
+        if (previewBtn) {
+            previewBtn.onclick = () => {
+                if (window.BookPreview && book.id) {
+                    window.BookPreview.open(book.id, book.volumeInfo.title || 'Book Preview');
+                }
+            };
+        }
+
         modal.showModal();
         document.getElementById('closeModalBtn').onclick = () => modal.close();
 
