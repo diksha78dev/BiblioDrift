@@ -264,6 +264,10 @@ class BookshelfRenderer3D {
         this.searchQuery = ''; // Default search query
         this.currentView = 'shelves'; // 'shelves' or 'constellation'
         this.constellationSimulation = null; // Store D3 simulation
+        this.cleanupCallbacks = [];
+        this.isDestroyed = false;
+        this._modalBackdropHandler = null;
+        this._escHandler = null;
 
         // Create live region for screen reader announcements
         this.liveRegion = document.createElement('div');
@@ -318,11 +322,20 @@ class BookshelfRenderer3D {
         return null;
     }
 
+    addManagedListener(target, eventName, handler, options) {
+        if (!target || typeof target.addEventListener !== 'function') {
+            return;
+        }
+
+        target.addEventListener(eventName, handler, options);
+        this.cleanupCallbacks.push(() => target.removeEventListener(eventName, handler, options));
+    }
+
     init() {
         // Sort listener
         const sortSelect = document.getElementById('library-sort');
         if (sortSelect) {
-            sortSelect.addEventListener('change', (e) => {
+            this.addManagedListener(sortSelect, 'change', (e) => {
                 this.sortCriteria = e.target.value;
                 this.refreshShelves();
             });
@@ -331,7 +344,7 @@ class BookshelfRenderer3D {
         // Filter listener
         const filterSelect = document.getElementById('library-filter');
         if (filterSelect) {
-            filterSelect.addEventListener('change', (e) => {
+            this.addManagedListener(filterSelect, 'change', (e) => {
                 this.filterCriteria = e.target.value;
                 this.refreshShelves();
             });
@@ -340,7 +353,7 @@ class BookshelfRenderer3D {
         // Search listener for "Search for a feeling..."
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
+            this.addManagedListener(searchInput, 'input', (e) => {
                 this.searchQuery = e.target.value.toLowerCase();
                 if (this.currentView === 'shelves') {
                     this.refreshShelves();
@@ -357,7 +370,7 @@ class BookshelfRenderer3D {
         const containerConstellation = document.getElementById('constellation-container');
 
         if (btnShelves && btnConstellation) {
-            btnShelves.addEventListener('click', () => {
+            this.addManagedListener(btnShelves, 'click', () => {
                 this.currentView = 'shelves';
                 btnShelves.classList.add('active-view');
                 btnShelves.classList.replace('btn-secondary', 'btn-primary');
@@ -369,7 +382,7 @@ class BookshelfRenderer3D {
                 this.refreshShelves();
             });
 
-            btnConstellation.addEventListener('click', () => {
+            this.addManagedListener(btnConstellation, 'click', () => {
                 this.currentView = 'constellation';
                 btnConstellation.classList.add('active-view');
                 btnConstellation.classList.replace('btn-secondary', 'btn-primary');
@@ -385,10 +398,10 @@ class BookshelfRenderer3D {
         // Render all shelves with sample books
         this.refreshShelves();
 
-        window.addEventListener('bibliodrift:library-manager-ready', () => {
+        this.addManagedListener(window, 'bibliodrift:library-manager-ready', () => {
             this.refreshShelves();
         });
-        window.addEventListener('bibliodrift:library-manager-synced', () => {
+        this.addManagedListener(window, 'bibliodrift:library-manager-synced', () => {
             this.refreshShelves();
         });
 
@@ -1420,22 +1433,25 @@ class BookshelfRenderer3D {
             });
         }
 
-        // Click outside to close (backdrop)
-        if (this.modal) {
-            this.modal.addEventListener('click', (e) => {
-                // If clicking the backdrop (modal container itself)
+        // Click outside to close (bind once to avoid listener leaks).
+        if (this.modal && !this._modalBackdropHandler) {
+            this._modalBackdropHandler = (e) => {
                 if (e.target === this.modal) {
                     this.closeModal();
                 }
-            });
+            };
+            this.addManagedListener(this.modal, 'click', this._modalBackdropHandler);
         }
 
-        // ESC key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.modal && this.modal.classList.contains('active')) {
-                this.closeModal();
-            }
-        });
+        // ESC key to close (bind once to avoid listener leaks).
+        if (!this._escHandler) {
+            this._escHandler = (e) => {
+                if (e.key === 'Escape' && this.modal && this.modal.classList.contains('active')) {
+                    this.closeModal();
+                }
+            };
+            this.addManagedListener(document, 'keydown', this._escHandler);
+        }
 
         // Add to library button logic
         const addBtn = document.getElementById('modal-add-btn');
@@ -1883,14 +1899,68 @@ class BookshelfRenderer3D {
             event.subject.fy = null;
         }
     }
+
+    // Cleanup method for SPA unmount/navigation.
+    destroy() {
+        if (this.isDestroyed) {
+            return;
+        }
+
+        this.isDestroyed = true;
+
+        if (this.constellationSimulation) {
+            this.constellationSimulation.stop();
+            this.constellationSimulation = null;
+        }
+
+        if (this.tooltipTimeout) {
+            clearTimeout(this.tooltipTimeout);
+            this.tooltipTimeout = null;
+        }
+
+        while (this.cleanupCallbacks.length > 0) {
+            const cleanup = this.cleanupCallbacks.pop();
+            try {
+                cleanup();
+            } catch (err) {
+                console.warn('Cleanup listener failed', err);
+            }
+        }
+
+        const constellationContainer = document.getElementById('constellation-container');
+        if (constellationContainer) {
+            constellationContainer.innerHTML = '';
+        }
+
+        if (this.modal && this.modal.classList.contains('active')) {
+            this.closeModal();
+        }
+
+        if (this.liveRegion && this.liveRegion.parentNode) {
+            this.liveRegion.parentNode.removeChild(this.liveRegion);
+        }
+
+        this.liveRegion = null;
+        this.currentBook = null;
+    }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize on library page
     if (document.getElementById('library-shelves')) {
+        if (window.bookshelf3D && typeof window.bookshelf3D.destroy === 'function') {
+            window.bookshelf3D.destroy();
+        }
+
         const renderer = new BookshelfRenderer3D();
         window.bookshelf3D = renderer;
         window.bookshelfRenderer = renderer;
+
+        window.addEventListener('pagehide', () => {
+            if (window.bookshelf3D && typeof window.bookshelf3D.destroy === 'function') {
+                window.bookshelf3D.destroy();
+            }
+        }, { once: true });
     }
 });
