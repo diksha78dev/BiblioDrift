@@ -8,6 +8,7 @@ from flask_jwt_extended import (
     get_jwt_identity, set_access_cookies, unset_jwt_cookies
 )
 from sqlalchemy.orm import joinedload
+from flask_migrate import Migrate
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import os
@@ -866,6 +867,7 @@ def remove_from_library(item_id):
 
 
 db.init_app(app)
+migrate = Migrate(app, db)
 price_tracker = get_price_tracker(db)
 
 
