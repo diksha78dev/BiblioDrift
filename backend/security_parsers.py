@@ -55,8 +55,9 @@ def safe_get_json(
     force: bool = False,
     silent: bool = False,
     max_size: int = MAX_JSON_SIZE_BYTES,
-    validate_type: bool = True
-) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+    validate_type: bool = True,
+    require_object: bool = True
+) -> Tuple[bool, Optional[Any], Optional[str]]:
     """
     Safely parse JSON from request body with size and depth limits.
     
@@ -65,6 +66,7 @@ def safe_get_json(
         silent: Return None instead of raising exceptions (default: False)
         max_size: Maximum allowed request body size in bytes (default: 1MB)
         validate_type: Validate Content-Type header (default: True)
+        require_object: Require the parsed JSON root to be an object/dict (default: True)
     
     Returns:
         Tuple[bool, Optional[Dict], Optional[str]]: (success, parsed_data, error_message)
@@ -123,11 +125,10 @@ def safe_get_json(
             return False, None, error_msg
         
         # Step 6: Ensure parsed data is dict-like for API payloads
-        if not isinstance(parsed_data, dict):
-            if not force:
-                error_msg = "JSON root must be an object, not array or primitive"
-                logger.warning(error_msg)
-                return False, None, error_msg
+        if require_object and not isinstance(parsed_data, dict):
+            error_msg = "JSON root must be an object, not array or primitive"
+            logger.warning(error_msg)
+            return False, None, error_msg
         
         logger.debug(f"Successfully parsed JSON payload: {len(raw_data)} bytes")
         return True, parsed_data, None
