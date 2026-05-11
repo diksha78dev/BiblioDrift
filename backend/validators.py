@@ -196,19 +196,6 @@ class RegisterRequest(BaseModel):
             raise ValueError('Username must contain only letters, numbers, and underscores.')
         return v
 
-    @field_validator('password')
-    @classmethod
-    def password_complexity(cls, v: str) -> str:
-        """Ensure password meets complexity requirements."""
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not re.search(r'\d', v):
-            raise ValueError('Password must contain at least one number')
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
-            raise ValueError('Password must contain at least one special character')
-        return v
-
-
 class LoginRequest(BaseModel):
     """Request schema for POST /api/v1/login endpoint."""
     username: str = Field(..., min_length=1, description="Username or email")
