@@ -8,7 +8,12 @@ import re
 from pydantic import BaseModel, Field, field_validator, model_validator, EmailStr
 from typing import Optional, List, Dict, Any, Literal
 from enum import Enum
-from sanitizer import sanitize_string, sanitize_for_ai
+
+# Handle both absolute and relative imports
+try:
+    from .sanitizer import sanitize_string, sanitize_for_ai
+except ImportError:
+    from sanitizer import sanitize_string, sanitize_for_ai
 
 
 GOOGLE_BOOKS_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{12,13}$')

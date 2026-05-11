@@ -172,7 +172,7 @@ class MoodQueryParser:
         return MoodQuery(
             original_query=query,
             primary_moods=primary_moods or ['atmospheric'],  # Fallback mood
-            intensity=min(intensity, 1.0),
+            intensity=min(intensity, 2.0),  # Allow intensity up to 2.0 to reflect modifiers
             negations=negations,
             themes=themes,
             confidence=confidence
