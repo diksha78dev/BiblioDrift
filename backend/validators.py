@@ -30,8 +30,8 @@ class ShelfType(str, Enum):
 
 class ChatMessage(BaseModel):
     """Schema for chat message history items."""
-    type: str = Field(..., description="Message type (user/bot)")
-    content: str = Field(..., max_length=1000, description="Message content")
+    type: str = Field(..., description="Message type (user/bookseller)")
+    content: str = Field(..., max_length=2000, description="Message content")
     
     @field_validator('content')
     @classmethod

@@ -2038,6 +2038,91 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 100);
         }
 
+        // =====================================================================
+        // READING PROGRESS OVERVIEW
+        // Renders a progress card for each book currently being read.
+        // =====================================================================
+        const progressGrid = document.getElementById('progress-overview-grid');
+        if (progressGrid) {
+            const currentBooks = libManager.library.current || [];
+            if (currentBooks.length === 0) {
+                progressGrid.innerHTML = '<div class="empty-state"><p>No books currently in progress. <a href="library.html">Visit your library</a> to start reading.</p></div>';
+            } else {
+                progressGrid.innerHTML = '';
+                currentBooks.forEach(book => {
+                    const title = book.volumeInfo?.title || book.title || 'Untitled';
+                    const author = (book.volumeInfo?.authors?.[0]) || book.author || 'Unknown Author';
+                    const cover = book.volumeInfo?.imageLinks?.thumbnail || book.cover || '';
+                    const progress = typeof book.progress === 'number' ? book.progress : 0;
+
+                    const card = document.createElement('div');
+                    card.className = 'progress-overview-card';
+                    card.innerHTML = `
+                        <div class="progress-card-cover">
+                            ${cover ? `<img src="${cover.replace('http:', 'https:')}" alt="${title}" loading="lazy">` : '<i class="fa-solid fa-book"></i>'}
+                        </div>
+                        <div class="progress-card-info">
+                            <div class="progress-card-title">${title}</div>
+                            <div class="progress-card-author">${author}</div>
+                            <div class="progress-card-bar-wrap">
+                                <div class="progress-card-bar-track">
+                                    <div class="progress-card-bar-fill" style="width:${progress}%"></div>
+                                </div>
+                                <span class="progress-card-pct">${progress}%</span>
+                            </div>
+                            <div class="progress-card-quick-update">
+                                <input type="range" min="0" max="100" value="${progress}"
+                                    class="progress-card-slider"
+                                    aria-label="Update reading progress for ${title}">
+                                <button class="progress-card-save-btn" data-book-id="${book.id}">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Wire up the quick-update slider
+                    const slider = card.querySelector('.progress-card-slider');
+                    const barFill = card.querySelector('.progress-card-bar-fill');
+                    const pctLabel = card.querySelector('.progress-card-pct');
+                    const saveBtn = card.querySelector('.progress-card-save-btn');
+
+                    slider.addEventListener('input', () => {
+                        const val = parseInt(slider.value);
+                        barFill.style.width = `${val}%`;
+                        pctLabel.textContent = `${val}%`;
+                    });
+
+                    saveBtn.addEventListener('click', async () => {
+                        const newProgress = parseInt(slider.value);
+                        saveBtn.disabled = true;
+                        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                        try {
+                            await libManager.updateBook(book.id, { progress: newProgress });
+                            book.progress = newProgress;
+                            saveBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                            saveBtn.style.background = '#4caf50';
+                            setTimeout(() => {
+                                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+                                saveBtn.style.background = '';
+                                saveBtn.disabled = false;
+                            }, 2000);
+                        } catch (err) {
+                            saveBtn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                            saveBtn.style.background = '#e53935';
+                            setTimeout(() => {
+                                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+                                saveBtn.style.background = '';
+                                saveBtn.disabled = false;
+                            }, 2000);
+                        }
+                    });
+
+                    progressGrid.appendChild(card);
+                });
+            }
+        }
+
         // Populate Achievements
         const achievementsGrid = document.getElementById('achievements-grid');
         achievementsGrid.innerHTML = '';

@@ -4555,3 +4555,465 @@ input:checked+.slider {
 input:checked+.slider:before {
     transform: translateX(14px);
 }
+
+
+/* ============================================================ */
+/* READING PROGRESS TRACKING SYSTEM                            */
+/* ============================================================ */
+
+/* --- Spine progress indicator (library.html 3D view) --- */
+.spine-progress-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: 2px 4px 4px 2px;
+    z-index: 2;
+}
+
+.spine-progress-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(212, 175, 55, 0.45);
+    transition: height 0.4s ease;
+    border-radius: 0 0 2px 2px;
+}
+
+/* Finished badge on spine */
+.spine-finished-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #4caf50;
+    font-size: 0.75rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* --- Tooltip progress bar --- */
+.tooltip-progress {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="night"] .tooltip-progress {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.tooltip-progress-bar-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+[data-theme="night"] .tooltip-progress-bar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-gold), #e6c44a);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.tooltip-progress-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* --- Modal progress tracker --- */
+.reading-progress-tracker {
+    background: #fdfaf5;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    margin-top: 0.75rem;
+    width: 100%;
+}
+
+[data-theme="night"] .reading-progress-tracker {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(212, 175, 55, 0.2);
+}
+
+.progress-tracker-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+    color: var(--wood-dark);
+}
+
+[data-theme="night"] .progress-tracker-header {
+    color: var(--accent-gold);
+}
+
+.progress-tracker-header i {
+    color: var(--accent-gold);
+    font-size: 1rem;
+}
+
+.progress-tracker-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.progress-percent-badge {
+    background: var(--accent-gold);
+    color: #2c2420;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+    min-width: 44px;
+    text-align: center;
+}
+
+/* Mode toggle buttons */
+.progress-mode-toggle {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.9rem;
+}
+
+.progress-mode-btn {
+    flex: 1;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'Georgia', serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.progress-mode-btn.active {
+    background: var(--accent-gold);
+    color: #2c2420;
+    border-color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.progress-mode-btn:hover:not(.active) {
+    border-color: var(--accent-gold);
+    color: var(--text-main);
+}
+
+/* Percentage slider group */
+.progress-input-group {
+    margin-bottom: 0.75rem;
+}
+
+.progress-range-slider {
+    width: 100%;
+    accent-color: var(--accent-gold);
+    cursor: pointer;
+    margin-bottom: 0.4rem;
+    height: 4px;
+}
+
+.progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.3rem;
+}
+
+[data-theme="night"] .progress-bar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-gold), #e6c44a);
+    border-radius: 4px;
+    transition: width 0.25s ease;
+}
+
+.progress-range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* Pages input group */
+.pages-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.6rem;
+}
+
+.pages-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.pages-field label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pages-number-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text-main);
+    font-family: 'Georgia', serif;
+    font-size: 0.9rem;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.pages-number-input:focus {
+    border-color: var(--accent-gold);
+}
+
+.pages-divider {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding-bottom: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Save button */
+.progress-save-btn {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    background: var(--wood-dark);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Georgia', serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.25s ease;
+    margin-top: 0.25rem;
+}
+
+.progress-save-btn:hover:not(:disabled) {
+    background: var(--accent-gold);
+    color: #2c2420;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.progress-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* --- Profile page: reading progress overview --- */
+.reading-progress-overview {
+    background: var(--book-bg);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--glass-border);
+}
+
+.reading-progress-overview h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--text-main);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.reading-progress-overview h2 i {
+    color: var(--accent-gold);
+}
+
+.progress-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.progress-overview-card {
+    display: flex;
+    gap: 1rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.progress-overview-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-gold);
+}
+
+.progress-card-cover {
+    width: 56px;
+    height: 80px;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--wood-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.5rem;
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.progress-card-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.progress-card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.progress-card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.progress-card-author {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.progress-card-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.progress-card-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+[data-theme="night"] .progress-card-bar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-card-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-gold), #e6c44a);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-card-pct {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    min-width: 32px;
+    text-align: right;
+}
+
+.progress-card-quick-update {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+}
+
+.progress-card-slider {
+    flex: 1;
+    accent-color: var(--accent-gold);
+    cursor: pointer;
+    height: 4px;
+}
+
+.progress-card-save-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.progress-card-save-btn:hover:not(:disabled) {
+    background: var(--accent-gold);
+    color: #2c2420;
+    border-color: var(--accent-gold);
+}
+
+.progress-card-save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+    .progress-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reading-progress-tracker {
+        padding: 1rem;
+    }
+
+    .pages-input-row {
+        flex-wrap: wrap;
+    }
+
+    .pages-divider {
+        display: none;
+    }
+}
