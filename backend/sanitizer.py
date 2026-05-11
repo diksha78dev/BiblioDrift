@@ -79,21 +79,21 @@ def sanitize_string(text: Optional[str], max_len: int = 5000, strip_html: bool =
     try:
         text = html.unescape(text)
     except Exception:
-        # If unescape fails for any reason, continue with original text
+        # If unescape fails for any reason, continue with original text.
         pass
-
-    # Remove entire script/iframe/embed/object tags and their contents early
-    # to avoid leaving dangerous inner text (e.g., alert()) behind.
-    text = re.sub(r'(?is)<script[^>]*>.*?</script>', '', text)
-    text = re.sub(r'(?is)<iframe[^>]*>.*?</iframe>', '', text)
-    text = re.sub(r'(?is)<embed[^>]*>.*?</embed>', '', text)
-    text = re.sub(r'(?is)<object[^>]*>.*?</object>', '', text)
 
     # Layer 1: Detect dangerous patterns and log
     for pattern in DANGEROUS_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE | re.DOTALL):
             logger.warning(f"Dangerous pattern detected in input: {pattern[:30]}...")
             # Don't block, but flag it
+
+    # Remove entire dangerous tag blocks (including contents) before bleach,
+    # so payload text like alert(...) does not survive tag stripping.
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<iframe[^>]*>.*?</iframe>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<embed[^>]*>.*?</embed>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<object[^>]*>.*?</object>', '', text, flags=re.IGNORECASE | re.DOTALL)
     
     # Layer 2: Use bleach for HTML sanitization (removes all dangerous tags)
     if strip_html:
