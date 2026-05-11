@@ -48,8 +48,8 @@ class Book(db.Model):
 
 class ShelfItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False, index=True)
     shelf_type = db.Column(db.String(50), nullable=False)
     progress = db.Column(db.Integer, default=0)
     rating = db.Column(db.Integer)
@@ -246,7 +246,7 @@ class BookNote(db.Model):
 class ReadingGoal(db.Model):
     """Model for tracking user's annual reading goals."""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     year = db.Column(db.Integer, nullable=False)
     target_books = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -273,7 +273,7 @@ class ReadingGoal(db.Model):
 class ReadingStats(db.Model):
     """Model for tracking user's monthly reading statistics."""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     year = db.Column(db.Integer, nullable=False)
     month = db.Column(db.Integer, nullable=False)
     books_completed = db.Column(db.Integer, default=0)
@@ -304,7 +304,7 @@ class ReadingStats(db.Model):
 class Collection(db.Model):
     """Model for user's custom book collections."""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(500), nullable=True)
     is_public = db.Column(db.Boolean, default=False)
@@ -338,8 +338,8 @@ class Collection(db.Model):
 class CollectionItem(db.Model):
     """Model for items in a user's collection."""
     id = db.Column(db.Integer, primary_key=True)
-    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'), nullable=False)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
+    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'), nullable=False, index=True)
+    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False, index=True)
     added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
@@ -400,7 +400,7 @@ def login_user(identifier, password):
 class PriceHistory(db.Model):
     """Model for tracking book prices across different retailers."""
     id = db.Column(db.Integer, primary_key=True)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
+    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False, index=True)
     retailer = db.Column(db.String(50), nullable=False)  # 'google_books', 'amazon', 'barnes_noble', etc.
     price = db.Column(db.Float, nullable=False)
     currency = db.Column(db.String(3), default='USD')  # ISO currency code
@@ -430,8 +430,8 @@ class PriceHistory(db.Model):
 class PriceAlert(db.Model):
     """Model for user's price alerts on books."""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    shelf_item_id = db.Column(db.Integer, db.ForeignKey('shelf_item.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    shelf_item_id = db.Column(db.Integer, db.ForeignKey('shelf_item.id'), nullable=False, index=True)
     target_price = db.Column(db.Float, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     notified_at = db.Column(db.DateTime, nullable=True)  # Timestamp when user was notified
