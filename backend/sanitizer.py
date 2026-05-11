@@ -75,7 +75,20 @@ def sanitize_string(text: Optional[str], max_len: int = 5000, strip_html: bool =
     
     if not text:
         return ""
-    
+    # Normalize entity-encoded input (handle &lt;script&gt; etc.)
+    try:
+        text = html.unescape(text)
+    except Exception:
+        # If unescape fails for any reason, continue with original text
+        pass
+
+    # Remove entire script/iframe/embed/object tags and their contents early
+    # to avoid leaving dangerous inner text (e.g., alert()) behind.
+    text = re.sub(r'(?is)<script[^>]*>.*?</script>', '', text)
+    text = re.sub(r'(?is)<iframe[^>]*>.*?</iframe>', '', text)
+    text = re.sub(r'(?is)<embed[^>]*>.*?</embed>', '', text)
+    text = re.sub(r'(?is)<object[^>]*>.*?</object>', '', text)
+
     # Layer 1: Detect dangerous patterns and log
     for pattern in DANGEROUS_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE | re.DOTALL):
