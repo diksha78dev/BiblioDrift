@@ -10,6 +10,7 @@ from flask_jwt_extended import (
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy.orm import joinedload
+from flask_migrate import Migrate
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import os
@@ -883,6 +884,7 @@ def remove_from_library(item_id):
 
 
 db.init_app(app)
+migrate = Migrate(app, db)
 price_tracker = get_price_tracker(db)
 
 

@@ -8,7 +8,12 @@ import re
 from pydantic import BaseModel, Field, field_validator, model_validator, EmailStr
 from typing import Optional, List, Dict, Any, Literal
 from enum import Enum
-from sanitizer import sanitize_string, sanitize_for_ai
+
+# Handle both absolute and relative imports
+try:
+    from .sanitizer import sanitize_string, sanitize_for_ai
+except ImportError:
+    from sanitizer import sanitize_string, sanitize_for_ai
 
 
 GOOGLE_BOOKS_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{12,13}$')
@@ -30,8 +35,8 @@ class ShelfType(str, Enum):
 
 class ChatMessage(BaseModel):
     """Schema for chat message history items."""
-    type: str = Field(..., description="Message type (user/bot)")
-    content: str = Field(..., max_length=1000, description="Message content")
+    type: str = Field(..., description="Message type (user/bookseller)")
+    content: str = Field(..., max_length=2000, description="Message content")
     
     @field_validator('content')
     @classmethod
@@ -190,19 +195,6 @@ class RegisterRequest(BaseModel):
         if not v.replace('_', '').isalnum():
             raise ValueError('Username must contain only letters, numbers, and underscores.')
         return v
-
-    @field_validator('password')
-    @classmethod
-    def password_complexity(cls, v: str) -> str:
-        """Ensure password meets complexity requirements."""
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not re.search(r'\d', v):
-            raise ValueError('Password must contain at least one number')
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
-            raise ValueError('Password must contain at least one special character')
-        return v
-
 
 class LoginRequest(BaseModel):
     """Request schema for POST /api/v1/login endpoint."""

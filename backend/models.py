@@ -468,8 +468,8 @@ class PriceAlert(db.Model):
 class Review(db.Model):
     """Model for user book reviews and ratings."""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)  # 1-5 star rating
     review_text = db.Column(db.Text, nullable=True)  # Optional detailed review
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -481,6 +481,8 @@ class Review(db.Model):
     
     __table_args__ = (
         db.UniqueConstraint('user_id', 'book_id', name='uq_user_book_review'),
+        db.Index('idx_review_book_id', 'book_id'),
+        db.Index('idx_review_user_id', 'user_id'),
     )
     
     def to_dict(self):
