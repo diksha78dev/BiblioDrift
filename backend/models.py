@@ -50,7 +50,7 @@ class ShelfItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
-    shelf_type = db.Column(db.Enum('want', 'current', 'finished', name='shelf_item_types'), nullable=False)
+    shelf_type = db.Column(db.String(50), nullable=False)
     progress = db.Column(db.Integer, default=0)
     rating = db.Column(db.Integer)
     finished_at = db.Column(db.DateTime, nullable=True)  # Timestamp when book was marked as finished
@@ -120,10 +120,97 @@ class ShelfItem(db.Model):
                 raise ValueError(f"Invalid target_price type: {value}. Must be a float.")
         return value
 
+    @validates('shelf_type')
+    def validate_shelf_type(self, key, value):
+        """
+        =========================================================================
+        SHELF TYPE VALIDATION LOGIC
+        =========================================================================
+        
+        This method ensures that the 'shelf_type' property is always set to one
+        of the allowed, predefined values before any database operations occur.
+        
+        ALLOWED VALUES:
+        - 'want': Books the user wants to read in the future.
+        - 'current': Books the user is currently reading.
+        - 'finished': Books the user has already finished reading.
+        
+        RATIONALE:
+        While Pydantic models typically handle validation at the API layer,
+        relying solely on API-level validation is insufficient for robust
+        data integrity. Direct database insertions, future code modifications,
+        or internal background jobs that bypass the API layer could potentially
+        store invalid values (e.g., 'wishlist', 'reading', 'done') in the
+        'shelf_type' column. This would lead to inconsistent states, breaking
+        frontend rendering and business logic.
+        
+        By implementing this ORM-level @validates decorator, we establish an
+        additional layer of defense (defense-in-depth). This guarantees that
+        any Python code interacting with the ShelfItem model must provide a
+        valid shelf_type, regardless of whether the request originated from
+        an API endpoint or an internal service.
+        
+        Furthermore, we couple this ORM validation with a strict database-level
+        CHECK constraint defined in __table_args__. This dual-layered approach
+        ensures absolute data consistency across all system layers.
+        
+        PROCESS:
+        1. Check if the incoming value is within the allowed set.
+        2. If invalid, log the attempt (optional but good for auditing) and
+           raise a ValueError detailing the expected values.
+        3. If valid, return the value to be assigned to the model instance.
+        
+        =========================================================================
+        """
+        
+        # Define the strict set of allowed shelf types
+        allowed_types = {'want', 'current', 'finished'}
+        
+        # Perform the validation check against the allowed types
+        if value not in allowed_types:
+            
+            # Construct a detailed error message for better debugging
+            error_msg = (
+                f"CRITICAL VALIDATION ERROR: Invalid shelf_type provided: '{value}'. "
+                f"The shelf_type must be strictly one of the following "
+                f"allowed values: {', '.join(allowed_types)}."
+            )
+            
+            # Raise a ValueError to prevent the invalid data from being processed
+            raise ValueError(error_msg)
+            
+        # Return the validated and sanitized value
+        return value
+
     # Relationships
     user = db.relationship('User', backref=db.backref('shelf_items', lazy=True))
     book = db.relationship('Book', backref=db.backref('shelf_items', lazy=True))
     price_alerts = db.relationship('PriceAlert', backref='shelf_item', lazy=True, cascade='all, delete-orphan')
+
+    # =========================================================================
+    # DATABASE LEVEL CONSTRAINTS
+    # =========================================================================
+    # Implementing strict database-level constraints is a critical best
+    # practice for ensuring data integrity and preventing data corruption.
+    # 
+    # The CheckConstraint defined below acts as the ultimate safeguard against
+    # invalid 'shelf_type' values being written to the database. Even if both
+    # the API validation layer and the SQLAlchemy ORM validation layer were
+    # to fail or be bypassed entirely (e.g., via direct SQL execution or
+    # faulty database migration scripts), the database engine itself will
+    # strictly reject any row that does not conform to the defined rules.
+    #
+    # This addresses the specific vulnerability where a plain db.String(50)
+    # column could accept arbitrary string values, leading to unrecoverable
+    # application states.
+    # =========================================================================
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "shelf_type IN ('want', 'current', 'finished')", 
+            name='check_valid_shelf_type'
+        ),
+    )
 
     def to_dict(self):
         return {
