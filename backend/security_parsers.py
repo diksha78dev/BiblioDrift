@@ -145,28 +145,33 @@ def safe_get_json(
 
 def _validate_depth(obj: Any, current_depth: int = 0, max_depth: int = MAX_NESTED_DEPTH) -> bool:
     """
-    Recursively validate JSON nesting depth to prevent stack overflow attacks.
+    Iteratively validate JSON nesting depth to prevent stack overflow attacks.
     
     Args:
         obj: Object to validate
-        current_depth: Current recursion depth (internal use)
+        current_depth: Starting depth for the provided object (internal use)
         max_depth: Maximum allowed depth
     
     Returns:
         bool: True if depth is within limits
     """
-    if current_depth > max_depth:
-        return False
-    
-    if isinstance(obj, dict):
-        for value in obj.values():
-            if not _validate_depth(value, current_depth + 1, max_depth):
-                return False
-    elif isinstance(obj, (list, tuple)):
-        for item in obj:
-            if not _validate_depth(item, current_depth + 1, max_depth):
-                return False
-    
+    stack = [(obj, current_depth)]
+
+    while stack:
+        value, depth = stack.pop()
+
+        if depth > max_depth:
+            return False
+
+        if isinstance(value, dict):
+            next_depth = depth + 1
+            for child in value.values():
+                stack.append((child, next_depth))
+        elif isinstance(value, (list, tuple)):
+            next_depth = depth + 1
+            for child in value:
+                stack.append((child, next_depth))
+
     return True
 
 
