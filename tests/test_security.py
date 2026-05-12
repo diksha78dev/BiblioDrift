@@ -6,12 +6,13 @@ Run with: python -m pytest tests/test_security.py -v
 """
 import pytest
 import json
+import sys
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 # Import security modules
 from backend.security_parsers import (
-    safe_get_json, get_request_arg_safe, validate_content_type,
+    safe_get_json, get_request_arg_safe, validate_content_type, _validate_depth,
     JSONParseError, MAX_JSON_SIZE_BYTES
 )
 from backend.sanitizer import (
@@ -84,6 +85,21 @@ class TestJSONParsing:
         assert success
         assert error is None
         assert data == [{"id": 1}]
+
+    def test_validate_depth_handles_deep_payload_without_recursion_error(self):
+        """Iterative traversal should reject deep payloads without recursion overhead."""
+        nested = {}
+        current = nested
+        for _ in range(30):
+            current["nested"] = {}
+            current = current["nested"]
+
+        old_limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(20)
+            assert _validate_depth(nested, max_depth=10) is False
+        finally:
+            sys.setrecursionlimit(old_limit)
 
 
 class TestXSSSanitization:
