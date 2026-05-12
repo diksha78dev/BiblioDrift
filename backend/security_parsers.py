@@ -219,8 +219,16 @@ def get_request_arg_safe(
         # Type conversion with validation
         try:
             if arg_type == bool:
-                # Handle boolean conversion carefully
-                parsed_value = raw_value.lower() in ('true', '1', 'yes', 'on')
+                # Accept only explicit boolean values; reject ambiguous strings.
+                normalized_value = raw_value.strip().lower()
+                true_values = ('true', '1', 'yes', 'on')
+                false_values = ('false', '0', 'no', 'off')
+                if normalized_value in true_values:
+                    parsed_value = True
+                elif normalized_value in false_values:
+                    parsed_value = False
+                else:
+                    raise ValueError("invalid boolean value")
             elif arg_type == int:
                 parsed_value = int(raw_value)
             elif arg_type == float:
