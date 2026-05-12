@@ -23,6 +23,14 @@ from backend.validators import validate_google_books_id, validate_request, AddTo
 
 class TestJSONParsing:
     """Test safe JSON parsing with malicious payloads."""
+
+    def _mock_json_request(self, payload: str, content_type: str = "application/json"):
+        mock_request = MagicMock()
+        mock_request.content_type = content_type
+        mock_request.content_length = len(payload)
+        mock_request.is_json = content_type.startswith("application/json")
+        mock_request.get_data.return_value = payload
+        return mock_request
     
     def test_oversized_json_payload(self):
         """Test that oversized JSON payloads are rejected."""
@@ -54,6 +62,28 @@ class TestJSONParsing:
             assert False, "Should have raised JSONDecodeError"
         except json.JSONDecodeError:
             pass  # Expected
+
+    def test_force_does_not_allow_non_object_root(self):
+        """Force mode should not bypass object-root validation."""
+        payload = json.dumps([{"id": 1}])
+
+        with patch("backend.security_parsers.request", self._mock_json_request(payload)):
+            success, data, error = safe_get_json(force=True)
+
+        assert not success
+        assert data is None
+        assert error == "JSON root must be an object, not array or primitive"
+
+    def test_non_object_root_allowed_when_explicitly_opted_out(self):
+        """Callers can explicitly accept array roots when they need to."""
+        payload = json.dumps([{"id": 1}])
+
+        with patch("backend.security_parsers.request", self._mock_json_request(payload)):
+            success, data, error = safe_get_json(force=True, require_object=False)
+
+        assert success
+        assert error is None
+        assert data == [{"id": 1}]
 
 
 class TestXSSSanitization:
