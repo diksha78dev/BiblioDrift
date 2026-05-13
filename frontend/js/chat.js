@@ -11,9 +11,11 @@ class ChatInterface {
         this.conversationHistory = [];
         this.isProcessing = false;
 
-        // Ensure backend connection is initialized
-        if (typeof window !== 'undefined' && !window.MOOD_API_BASE) {
-            window.MOOD_API_BASE = 'http://127.0.0.1:5000/api/v1';
+        // Ensure backend connection is initialized with proper fallback
+        if (typeof window !== 'undefined') {
+            if (!window.MOOD_API_BASE || window.MOOD_API_BASE.includes(':5001')) {
+                window.MOOD_API_BASE = 'http://127.0.0.1:5000/api/v1';
+            }
         }
 
         this.init();
