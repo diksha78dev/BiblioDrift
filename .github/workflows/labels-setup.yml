@@ -18,26 +18,26 @@ jobs:
           script: |
             const labels = [
               // QUALITY (OPTIONAL) - Teal
-              { name: "quality:clean", color: "c5f0ed", description: "Clean code quality" },
-              { name: "quality:exceptional", color: "c5f0ed", description: "Exceptional code quality" },
+              { name: "quality:clean", color: "c5f0ed", description: "PR follows all coding standards and is well-structured" },
+              { name: "quality:exceptional", color: "c5f0ed", description: "PR goes above and beyond in terms of quality and optimization" },
               
               // TYPE BONUS (OPTIONAL) - Gray
-              { name: "type:docs", color: "f1f2f6", description: "Documentation changes" },
-              { name: "type:testing", color: "f1f2f6", description: "Testing related changes" },
-              { name: "type:accessibility", color: "f1f2f6", description: "Accessibility improvements" },
-              { name: "type:performance", color: "f1f2f6", description: "Performance optimizations" },
-              { name: "type:security", color: "f1f2f6", description: "Security related changes" },
-              { name: "type:design", color: "f1f2f6", description: "UI/UX design changes" },
-              { name: "type:refactor", color: "f1f2f6", description: "Code refactoring" },
-              { name: "type:devops", color: "f1f2f6", description: "DevOps and CI/CD changes" },
-              { name: "type:bug", color: "f1f2f6", description: "Bug fixes" },
-              { name: "type:feature", color: "f1f2f6", description: "New features" },
+              { name: "type:docs", color: "f1f2f6", description: "Additions or updates to documentation" },
+              { name: "type:testing", color: "f1f2f6", description: "Adding or improving tests" },
+              { name: "type:accessibility", color: "f1f2f6", description: "Improvements related to web accessibility" },
+              { name: "type:performance", color: "f1f2f6", description: "Changes that improve speed or resource usage" },
+              { name: "type:security", color: "f1f2f6", description: "Security-related fixes or enhancements" },
+              { name: "type:design", color: "f1f2f6", description: "Changes to UI, layout, or visual elements" },
+              { name: "type:refactor", color: "f1f2f6", description: "Code changes that neither fix a bug nor add a feature" },
+              { name: "type:devops", color: "f1f2f6", description: "Changes to CI/CD, build scripts, or infrastructure" },
+              { name: "type:bug", color: "f1f2f6", description: "Fixes for identified issues or errors" },
+              { name: "type:feature", color: "f1f2f6", description: "Introduction of new functionality" },
               
               // VALIDATION (ADMIN DECIDES)
-              { name: "gssoc:approved", color: "c5f0ed", description: "PR approved for GSSoC" },
-              { name: "gssoc:invalid", color: "ffcccb", description: "Invalid PR for GSSoC" },
-              { name: "gssoc:spam", color: "ffcccb", description: "Spam PR for GSSoC" },
-              { name: "gssoc:ai-slop", color: "ffcccb", description: "AI-generated low quality content" },
+              { name: "gssoc:approved", color: "c5f0ed", description: "PR has been reviewed and is eligible for GSSoC points" },
+              { name: "gssoc:invalid", color: "ffcccb", description: "PR does not meet requirements or is out of scope" },
+              { name: "gssoc:spam", color: "ffcccb", description: "PR is low-effort or automated spam" },
+              { name: "gssoc:ai-slop", color: "ffcccb", description: "PR contains low-quality AI-generated content" },
             ];
 
             for (const label of labels) {
