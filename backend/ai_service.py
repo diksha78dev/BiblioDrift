@@ -2,6 +2,14 @@
 # Implements 'generate_book_note' and 'get_ai_recommendations'. All recommendations MUST be AI-based.
 # Enhanced with comprehensive caching for expensive operations
 
+
+"""
+Enhanced recommendation system:
+- Improved mood detection
+- Better conversational responses
+- Reduced generic outputs
+"""
+
 import os
 import logging
 import json

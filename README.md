@@ -326,3 +326,11 @@ MIT License.
 Built by Devanshi Malhotra and contributors, with ☕ and code.
 
 If you like this project, please consider giving the repository a ⭐ STAR ⭐.
+
+## Chatbot Recommendation Improvements
+
+This update improves the AI recommendation system by:
+- Enhancing mood and emotional understanding
+- Improving prompt engineering for better personalization
+- Reducing repetitive recommendations
+- Supporting mixed and abstract moods more effectively
