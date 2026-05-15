@@ -8,6 +8,10 @@ on:
     paths:
       - '.github/workflows/labels-setup.yml'
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   setup-labels:
     runs-on: ubuntu-latest
