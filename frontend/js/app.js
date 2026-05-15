@@ -1659,8 +1659,8 @@ class ThemeManager {
     constructor() {
         this.themeKey = 'bibliodrift_theme';
         this.toggleBtn = document.getElementById('themeToggle');
-        // Read directly from localStorage — no abstraction layer
-        const stored = localStorage.getItem(this.themeKey);
+        // Use SafeStorage for consistency with app's storage strategy
+        const stored = SafeStorage.get(this.themeKey);
         this.currentTheme = stored === 'night' ? 'night' : 'light';
         // Named handler so we can remove & re-add cleanly (no stacking)
         this._handler = this._onClick.bind(this);
@@ -1670,7 +1670,7 @@ class ThemeManager {
     _onClick() {
         this.currentTheme = this.currentTheme === 'night' ? 'light' : 'night';
         this.applyTheme(this.currentTheme);
-        localStorage.setItem(this.themeKey, this.currentTheme);
+        SafeStorage.set(this.themeKey, this.currentTheme);
     }
 
     init() {
