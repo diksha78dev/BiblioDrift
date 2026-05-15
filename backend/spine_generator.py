@@ -22,7 +22,7 @@ def create_spine(title, author, output_name):
         font_title = font_author = ImageFont.load_default()
 
     # 2. RENDER THE TITLE
-    title_canvas = Image.new('RGBA', (800, 400), (0, 0, 0, 0))
+    title_canvas = Image.new('RGBA', (400, 400), (0, 0, 0, 0))
     t_draw = ImageDraw.Draw(title_canvas)
 
     # Dynamically adjust font size and wrap title
@@ -56,10 +56,10 @@ def create_spine(title, author, output_name):
     title_vert = title_canvas.rotate(270, expand=True)
     title_height = title_vert.size[1]
     title_y_position = max(20, (height - title_height) // 2)  # Center the title vertically
-    spine.paste(title_vert, (22, 20), title_vert)
+    spine.paste(title_vert, (22, title_y_position), title_vert)
 
     # 3. RENDER THE AUTHOR
-    author_canvas = Image.new('RGBA', (200, 400), (0, 0, 0, 0))
+    author_canvas = Image.new('RGBA', (400, 400), (0, 0, 0, 0))  # Adjusted canvas size for author
     a_draw = ImageDraw.Draw(author_canvas)
 
     # Dynamically adjust font size for author
@@ -67,13 +67,13 @@ def create_spine(title, author, output_name):
         font_author_size -= 1
         font_author = ImageFont.truetype(font_path, font_author_size)
 
-    a_draw.text((0, 5), author.upper(), font=font_author, fill=(255, 255, 255, 200))
+    a_draw.text((0, 0), author.upper(), font=font_author, fill=(255, 255, 255, 200))
 
     author_vert = author_canvas.rotate(270, expand=True)
 
     # Place author below the title, ensuring a new line
-    author_start_y = y_offset + 40  # Add spacing after the title
-    if author_start_y < 380:
+    author_start_y = title_y_position + title_height + 20  # Add spacing after the title
+    if author_start_y + author_vert.size[1] <= height:
         spine.paste(author_vert, (26, int(author_start_y)), author_vert)
 
     # 4. SAVE
