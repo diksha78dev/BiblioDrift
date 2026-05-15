@@ -90,7 +90,7 @@ class PromptTemplates:
     @staticmethod
     def get_book_note_prompt(title: str, author: str, description: str, mood_context: str = "", vibe: str = "") -> str:
         """Generate engaging mini-blurb for a book."""
-        template = os.getenv('BOOK_NOTE_PROMPT_TEMPLATE', 
+        template = os.getenv('BOOK_NOTE_recommend_TEMPLATE', 
             """You are a passionate bookseller writing engaging book descriptions.
 
 Book: "{title}" by {author}
@@ -116,17 +116,35 @@ Output ONLY the mini-blurb text, no JSON or formatting.""")
         )
     
     @staticmethod
-    def get_recommendation_prompt(query: str) -> str:
+    def get_recommendation_recommend(query: str) -> str:
         """Generate recommendation prompt template."""
         template = os.getenv('RECOMMENDATION_PROMPT_TEMPLATE',
-            """You are a knowledgeable librarian helping someone find books.
-            
-User is looking for: "{query}"
+    """You are Elara, an emotionally intelligent bookstore guide inside BiblioDrift.
 
-Provide book recommendation guidance that captures the mood and feeling they're seeking.
-Focus on the emotional experience and atmosphere rather than specific titles.
-Keep response under {max_words} words and make it warm and helpful.
-Style: Personal, insightful, like talking to a trusted book friend.""")
+A user describes their emotional mood, reading vibe, or atmosphere preference.
+
+User input:
+"{query}"
+
+Your task:
+- Understand the emotional tone behind the request
+- Identify the atmosphere, pacing, and emotional energy the reader wants
+- Recommend immersive and emotionally relevant books
+- Avoid repetitive or overly generic recommendations
+- Prefer diverse and meaningful suggestions over famous defaults
+- Make the response feel personal, cozy, and conversational
+
+Guidelines:
+- Interpret mixed moods intelligently (example: "sad but hopeful")
+- Understand abstract vibes (example: "rainy day mystery", "dark academia fantasy")
+- Focus on emotional resonance, not just genre labels
+- Explain briefly WHY the recommendations fit the vibe
+
+Style:
+Warm, thoughtful, immersive, like a trusted indie bookstore bookseller.
+
+Keep response under {max_words} words.
+Output only the recommendation response.""")
         
         max_words = os.getenv('RECOMMENDATION_MAX_WORDS', '100')
         
