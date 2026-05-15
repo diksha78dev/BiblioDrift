@@ -52,7 +52,9 @@ const createFooter = () => {
     </footer>
   `;
 
-  document.body.insertAdjacentHTML('beforeend', footerHTML);
+  if (!document.querySelector('.main-footer')) {
+    document.body.insertAdjacentHTML('beforeend', footerHTML);
+  }
 };
 
 createFooter();
