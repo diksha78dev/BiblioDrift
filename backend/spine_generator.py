@@ -14,40 +14,47 @@ def create_spine(title, author, output_name):
     spine = Image.new('RGB', (width, height), color=spine_color)
     
     try:
-        # Slightly smaller title font (16px) to ensure fit
         font_title = ImageFont.truetype(font_path, 16)
         font_author = ImageFont.truetype(font_path, 14)
     except:
         font_title = font_author = ImageFont.load_default()
 
     # 2. RENDER THE TITLE
-    spaced_title = " ".join(list(title.upper()))
-    # We use a very long canvas to measure it properly
-    title_canvas = Image.new('RGBA', (800, 50), (0, 0, 0, 0))
+    title_canvas = Image.new('RGBA', (800, 100), (0, 0, 0, 0))
     t_draw = ImageDraw.Draw(title_canvas)
-    
-    # Measure title length
-    t_width = t_draw.textlength(spaced_title, font=font_title)
-    t_draw.text((0, 5), spaced_title, font=font_title, fill="white")
-    
-    # Rotate and Paste Title at the very top
+
+    # Wrap title if too long
+    words = title.upper().split()
+    wrapped_title = []
+    current_line = ""
+    for word in words:
+        test_line = f"{current_line} {word}".strip()
+        if t_draw.textlength(test_line, font=font_title) > 70:  # Adjust width limit as needed
+            wrapped_title.append(current_line)
+            current_line = word
+        else:
+            current_line = test_line
+    wrapped_title.append(current_line)
+
+    # Draw wrapped title
+    y_offset = 0
+    for line in wrapped_title:
+        t_draw.text((0, y_offset), line, font=font_title, fill="white")
+        y_offset += 20  # Line spacing
+
+    # Rotate and Paste Title
     title_vert = title_canvas.rotate(270, expand=True)
     spine.paste(title_vert, (22, 20), title_vert)
 
-    # 3. RENDER THE AUTHOR (DYNAMICALLY)
-    # We start the author 40px AFTER the title ends OR at 250px, whichever is lower
-    # This prevents the "collision" you saw
-    title_end_y = 20 + t_width 
-    author_start_y = max(title_end_y + 40, 250)
-
-    author_text = f"|  {author.upper()}"
+    # 3. RENDER THE AUTHOR
     author_canvas = Image.new('RGBA', (200, 50), (0, 0, 0, 0))
     a_draw = ImageDraw.Draw(author_canvas)
-    a_draw.text((0, 5), author_text, font=font_author, fill=(255, 255, 255, 200))
-    
+    a_draw.text((0, 5), author.upper(), font=font_author, fill=(255, 255, 255, 200))
+
     author_vert = author_canvas.rotate(270, expand=True)
-    
-    # Ensure author doesn't fall off the bottom of the book (400px)
+
+    # Place author below the title, ensuring a new line
+    author_start_y = y_offset + 40  # Add spacing after the title
     if author_start_y < 380:
         spine.paste(author_vert, (26, int(author_start_y)), author_vert)
 
