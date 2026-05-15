@@ -20,10 +20,10 @@ def create_spine(title, author, output_name):
         font_title = font_author = ImageFont.load_default()
 
     # 2. RENDER THE TITLE
-    title_canvas = Image.new('RGBA', (800, 100), (0, 0, 0, 0))
+    title_canvas = Image.new('RGBA', (800, 400), (0, 0, 0, 0))  # Increased height to ensure full title fits
     t_draw = ImageDraw.Draw(title_canvas)
 
-    # Wrap title if too long
+    # Wrap title to fit within the spine width
     words = title.upper().split()
     wrapped_title = []
     current_line = ""
