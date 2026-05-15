@@ -108,11 +108,17 @@
         margin: 0.5rem;
         transform: scale(0.9); /* Scale down books slightly */
         flex-shrink: 0; /* IMPT: Prevent books from being squished */
+        background-size: cover; 
+        background-position: center;
+        object-fit: cover;
     }
     
     /* Specific tweak for spines in library to rotate slightly */
     .book-spine-3d {
          transform: rotateY(-5deg) scale(0.9);
+         background-size: cover; 
+         background-position: center;
+         object-fit: cover;
     }
 
     .shelf-section-3d {
@@ -155,6 +161,9 @@
         flex-shrink: 0;
         min-width: 60px; /* Minimum width for readability */
         height: var(--book-height); /*makes the heights consistent asw*/
+        background-size: cover; 
+        background-position: center;
+        object-fit: cover;
     }
 
     .book-spine-3d:nth-child(even),
@@ -265,6 +274,9 @@
         margin-right: 0;
         flex-shrink: 0;
         min-width: 38px;
+        background-size: cover; 
+        background-position: center;
+        object-fit: cover;
     }
 
     .book-spine-3d:nth-child(even),
@@ -357,6 +369,9 @@
         transform: rotateY(-1deg); /* Minimal rotation */
         margin-right: 0; /* No margin, gap handles it */
         min-width: 35px;
+        background-size: cover; 
+        background-position: center;
+        object-fit: cover;
     }
 
     .book-spine-3d:nth-child(even),
