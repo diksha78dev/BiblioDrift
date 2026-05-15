@@ -4565,7 +4565,6 @@ html[data-theme="night"] .glass-overlay,
 body.night-mode .glass-overlay,
 [data-theme="night"] .glass-overlay {
     background-color: #1e140c !important;
-    background: #1e140c !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
