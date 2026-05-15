@@ -90,35 +90,8 @@ class PromptTemplates:
     @staticmethod
     def get_book_note_prompt(title: str, author: str, description: str, mood_context: str = "", vibe: str = "") -> str:
         """Generate engaging mini-blurb for a book."""
-        template = os.getenv('BOOK_NOTE_PROMPT_TEMPLATE', 
-            """You are a passionate bookseller writing engaging book descriptions.
-
-Book: "{title}" by {author}
-Description: {description}
-{mood_context}
-
-Write a rich, engaging mini-blurb (80-120 words) that:
-- Captures what makes this book unique and special
-- Highlights emotional appeal or key themes
-- Avoids generic phrases
-- Makes readers want to pick it up
-
-Output ONLY the mini-blurb text, no JSON or formatting.""")
-        
-        max_words = os.getenv('BOOK_NOTE_MAX_WORDS', '30')
-        return template.format(
-            title=title,
-            author=author, 
-            description=description,
-            mood_context=mood_context,
-            vibe=vibe,
-            max_words=max_words
-        )
-    
-    @staticmethod
-    def get_recommendation_recommend(query: str) -> str:
-        """Generate recommendation prompt template."""
-        template = os.getenv('RECOMMENDATION_PROMPT_TEMPLATE',
+        template = os.getenv(
+    'RECOMMENDATION_PROMPT_TEMPLATE',
     """You are Elara, an emotionally intelligent bookstore guide inside BiblioDrift.
 
 A user describes their emotional mood, reading vibe, or atmosphere preference.
@@ -144,12 +117,41 @@ Style:
 Warm, thoughtful, immersive, like a trusted indie bookstore bookseller.
 
 Keep response under {max_words} words.
-Output only the recommendation response.""")
+Output only the recommendation response."""
+)
         
-        max_words = os.getenv('RECOMMENDATION_MAX_WORDS', '100')
-        
-        return template.format(query=query, max_words=max_words)
+        max_words = os.getenv('BOOK_NOTE_MAX_WORDS', '30')
+        return template.format(
+            title=title,
+            author=author, 
+            description=description,
+            mood_context=mood_context,
+            vibe=vibe,
+            max_words=max_words
+        )
+    
+    @staticmethod
+    def get_recommendation_recommend(query: str) -> str:
+        """Generate recommendation prompt template."""
 
+        template = os.getenv(
+            'RECOMMENDATION_PROMPT_TEMPLATE',
+            """You are Elara, an emotionally intelligent bookstore guide inside BiblioDrift.
+
+    User input:
+    "{query}"
+
+    Your task:
+    - Understand emotional tone...
+    - Recommend immersive books...
+
+    Keep response under {max_words} words.
+    Output only the recommendation response."""
+        )
+
+        max_words = os.getenv('RECOMMENDATION_MAX_WORDS', '100')
+
+        return template.format(query=query, max_words=max_words)
     @staticmethod
     def get_category_books_prompt(category: str, vibe_description: str, count: int = 5) -> str:
         """
