@@ -12,11 +12,15 @@ email-validator>=2.0.0
 # Database
 Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.46
+Flask-Migrate==4.0.7
 psycopg2-binary>=2.9
 
 # Caching
 redis>=5.0.0
 flask-caching>=2.1.0
+
+# Rate Limiting
+flask-limiter>=3.5.0
 
 # LLM Services
 openai>=1.0.0
