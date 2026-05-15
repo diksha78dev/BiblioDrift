@@ -1,58 +1,52 @@
 import os
-import textwrap
 from PIL import Image, ImageDraw, ImageFont
 
 def create_spine(title, author, output_name):
+    # --- 1. SETUP PATHS ---
     current_file_path = os.path.abspath(__file__)
     backend_dir = os.path.dirname(current_file_path)
     project_root = os.path.dirname(backend_dir)
     font_path = os.path.join(backend_dir, "EBGaramond-Medium.ttf")
     output_path = os.path.join(project_root, 'frontend', 'assets', 'images', f"{output_name}_spine.jpg")
 
-    # 1. CANVAS SETUP
+    # --- 2. CANVAS SETUP ---
     spine_color = (93, 64, 55) 
     width, height = 80, 400
     spine = Image.new('RGB', (width, height), color=spine_color)
     
     try:
-        # Smaller font (18px) allows for more "stacking" room
-        font = ImageFont.truetype(font_path, 18)
+        # Smaller font ensures it doesn't bleed off the 80px width
+        font_title = ImageFont.truetype(font_path, 18)
+        font_author = ImageFont.truetype(font_path, 14) # Author slightly smaller
     except:
-        font = ImageFont.load_default()
+        font_title = font_author = ImageFont.load_default()
 
-    # 2. THE STACKING LOGIC
-    # We will split the title if it's longer than 20 characters
+    # --- 3. CREATE THE TITLE LAYER (Top) ---
     spaced_title = " ".join(list(title.upper()))
-    title_lines = textwrap.wrap(spaced_title, width=25) # Breaks long titles
+    # We create a layer just for the title
+    title_layer = Image.new('RGBA', (300, 40), (0, 0, 0, 0))
+    title_draw = ImageDraw.Draw(title_layer)
+    title_draw.text((10, 5), spaced_title, font=font_title, fill="white")
     
-    # 3. DRAWING THE PIECES
-    # We create a temporary layer for the WHOLE vertical stack
-    # Imagine a long horizontal strip that we will rotate
-    temp_canvas_width = 380 
-    temp_canvas = Image.new('RGBA', (temp_canvas_width, 60), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(temp_canvas)
+    # Rotate and Paste Title at the TOP (y=20)
+    title_vert = title_layer.rotate(270, expand=True)
+    spine.paste(title_vert, (20, 20), title_vert)
 
-    # Position 1: The Title (Starts at the left of our temp canvas)
-    title_text = "  ".join(title_lines) 
-    draw.text((10, 5), title_text, font=font, fill="white")
-
-    # Position 2: The Author (We push this to the far right of the temp canvas)
+    # --- 4. CREATE THE AUTHOR LAYER (Bottom) ---
     author_text = f"|  {author.upper()}"
-    author_len = draw.textlength(author_text, font=font)
-    draw.text((temp_canvas_width - author_len - 10, 5), author_text, font=font, fill="rgba(255,255,255,180)")
-
-    # 4. ROTATION & PASTE
-    # This flips our "Title --------- Author" strip into a "Title (Top) / Author (Bottom)" vertical strip
-    vertical_stack = temp_canvas.rotate(270, expand=True)
+    author_layer = Image.new('RGBA', (150, 40), (0, 0, 0, 0))
+    author_draw = ImageDraw.Draw(author_layer)
+    author_draw.text((10, 5), author_text, font=font_author, fill=(255, 255, 255, 200)) # Slightly faded
     
-    # Paste it onto the spine, centered horizontally
-    # (width of spine - width of text) // 2 = centered
-    spine.paste(vertical_stack, (15, 10), vertical_stack)
+    # Rotate and Paste Author at the BOTTOM
+    # We calculate the position: Height (400) - Author Length (~150) - Margin (20)
+    author_vert = author_layer.rotate(270, expand=True)
+    spine.paste(author_vert, (25, 230), author_vert)
 
-    # 5. SAVE
+    # --- 5. SAVE ---
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     spine.save(output_path)
-    print(f"Successfully created stacked spine: {output_path}")
+    print(f"Successfully created: {output_path}")
 
 if __name__ == "__main__":
     create_spine("The God of Small Things", "Arundhati Roy", "small_things")
