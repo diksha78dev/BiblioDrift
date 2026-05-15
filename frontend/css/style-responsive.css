@@ -1,4 +1,9 @@
 /* Responsive Design Improvements for BiblioDrift */
+/* --- Desktop Defaults (applying to everything first) --- */
+:root {
+    --book-width: 180px;
+    --book-height: 280px;
+}
 
 /* --- Mobile Breakpoint (max-width: 768px) --- */
 @media (max-width: 768px) {
