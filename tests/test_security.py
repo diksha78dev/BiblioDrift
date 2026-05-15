@@ -9,12 +9,14 @@ import json
 import sys
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
+from flask import Flask, jsonify
 
 # Import security modules
 from backend.security_parsers import (
     safe_get_json, get_request_arg_safe, validate_content_type, _validate_depth,
     JSONParseError, MAX_JSON_SIZE_BYTES
 )
+from backend.middleware import validate_content_type_middleware, safe_request_handler
 from backend.sanitizer import (
     sanitize_string, sanitize_payload, contains_malicious_patterns,
     is_likely_html_attack, sanitize_for_ai, sanitize_for_display, sanitize_for_storage
@@ -393,6 +395,50 @@ class TestContentTypeValidation:
 
         assert is_valid
         assert error is None
+
+    def test_normalizes_case_and_parameters(self):
+        """Content-Type validation should ignore charset parameters and casing."""
+        with patch(
+            "backend.security_parsers.request",
+            SimpleNamespace(content_type="Application/JSON; charset=utf-8")
+        ):
+            is_valid, error = validate_content_type()
+
+        assert is_valid
+        assert error is None
+
+
+class TestMiddlewareContentTypeValidation:
+    """Test middleware Content-Type validation paths."""
+
+    def test_parameterized_form_content_type_is_accepted_consistently(self):
+        """Middleware and safe_request_handler should treat parameterized form headers the same way."""
+        app = Flask(__name__)
+
+        @app.post("/middleware")
+        @validate_content_type_middleware
+        def middleware_endpoint():
+            return jsonify({"ok": True})
+
+        @app.post("/safe")
+        @safe_request_handler(require_json=False)
+        def safe_endpoint():
+            return jsonify({"ok": True})
+
+        with app.test_client() as client:
+            middleware_response = client.post(
+                "/middleware",
+                data="name=value",
+                headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
+            )
+            safe_response = client.post(
+                "/safe",
+                data="name=value",
+                headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
+            )
+
+        assert middleware_response.status_code == 200
+        assert safe_response.status_code == 200
 
 
 class TestHTMLContentProtection:
