@@ -90,7 +90,7 @@ class PromptTemplates:
     @staticmethod
     def get_book_note_prompt(title: str, author: str, description: str, mood_context: str = "", vibe: str = "") -> str:
         """Generate engaging mini-blurb for a book."""
-        template = os.getenv('BOOK_NOTE_recommend_TEMPLATE', 
+        template = os.getenv('BOOK_NOTE_PROMPT_TEMPLATE', 
             """You are a passionate bookseller writing engaging book descriptions.
 
 Book: "{title}" by {author}
@@ -669,7 +669,7 @@ def get_ai_recommendations(query):
     """Generate AI-powered book recommendations based on query."""
     if llm_service.is_available():
         try:
-            prompt = PromptTemplates.get_recommendation_prompt(query)
+            prompt = PromptTemplates.get_recommendation_recommend(query)
             llm_response = llm_service.generate_text(prompt, llm_service.config['recommendation_max_tokens'])
             if llm_response:
                 return llm_response
