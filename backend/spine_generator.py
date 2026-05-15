@@ -16,11 +16,11 @@ def create_spine(title, author, output_name):
     
     # 3. LOAD FONT i have chosen eb garamond for the antique bookstore feel
     try:
-        font_path = "EBGaramond-Regular.ttf" 
-        # 26 is a good size for Garamond; it's elegant but readable
-        font = ImageFont.truetype(font_path, 26)
+        # We tell it to look inside the backend folder for the specific Medium font
+        font_path = os.path.join(backend_dir, "EBGaramond-Medium.ttf") 
+        font = ImageFont.truetype(font_path, 28)
     except Exception as e:
-        print(f"Font not found at {font_path}, using default. Error: {e}")
+        print(f"Font error: {e}. Looking in {font_path}")
         font = ImageFont.load_default()
 
     # 4. DRAW TEXT ON TEMPORARY LAYER
