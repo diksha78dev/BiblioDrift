@@ -528,7 +528,7 @@ class BookRenderer {
                  
                  const noteEl = scene.querySelector('.handwritten-note');
                  if (noteEl) {
-                    noteEl.innerHTML = cleanVibe;
+                          noteEl.textContent = cleanVibe;
                     noteEl.classList.add('fade-in'); // Optional animation hook
                  }
              }

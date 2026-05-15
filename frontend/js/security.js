@@ -86,7 +86,7 @@ function setElementContent(element, content, asHTML = false) {
 
     if (asHTML) {
         // Sanitize before inserting as HTML
-        element.innerHTML = sanitizeForDisplay(content);
+        element.innerHTML = sanitizeHTML(content);
     } else {
         // Use textContent for plain text (always safe)
         element.textContent = content;
