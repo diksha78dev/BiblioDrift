@@ -16,15 +16,15 @@
     /* Header Stack Layout */
     header {
         flex-direction: column;
-        padding: 1rem;
-        gap: 1rem;
+        padding: 0.5rem; /*reduced padding for mobile*/
+        gap: 0.5rem; /*reduced gap for mobile*/
         height: auto;
     }
 
     .header-controls {
         flex-direction: column;
         width: 100%;
-        gap: 1rem;
+        gap: 0.5rem; /*reduced gap for mobile*/
     }
 
     .search-bar {
@@ -154,7 +154,7 @@
         width: var(--book-width); /* to make the book spines consistent with the width */
         flex-shrink: 0;
         min-width: 60px; /* Minimum width for readability */
-        height: var(--book-width); /*makes the heights consistent asw*/
+        height: var(--book-height); /*makes the heights consistent asw*/
     }
 
     .book-spine-3d:nth-child(even),
