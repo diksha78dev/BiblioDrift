@@ -4555,17 +4555,10 @@ input:checked+.slider {
 input:checked+.slider:before {
     transform: translateX(14px);
 }
-/* 1. Pure website ke default background par solid premium Pen Nib */
 html, body {
   cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24'><path fill='%23cca43b' d='M4.42 20.58a1 1 0 0 0 1.41 0L15.24 11.2l-2.44-2.44L3.42 18.17a1 1 0 0 0 0 1.41zM17.36 9.08l-2.44-2.44 2.12-2.12a2 2 0 0 1 2.83 0l1.77 1.77a2 2 0 0 1 0 2.83z'/><path stroke='%23cca43b' stroke-width='1.5' d='M2 22l4-1'/></svg>") 0 24, auto !important;
 }
-
-/* 2. JAHAN BHI POINTER (HAND) AAYE - Chahe book cards ho, links ho, buttons ho ya images */
-:hover,
 *:hover {
-  /* Agar browser kisi bhi element par pointer/hand lagane ki koshish karega */
   cursor: pointer !important; 
-  
-  /* Toh uski jagah ye dynamic bright gold nib trigger ho jayegi */
   cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24'><path fill='%23ffca3a' d='M4.42 20.58a1 1 0 0 0 1.41 0L15.24 11.2l-2.44-2.44L3.42 18.17a1 1 0 0 0 0 1.41zM17.36 9.08l-2.44-2.44 2.12-2.12a2 2 0 0 1 2.83 0l1.77 1.77a2 2 0 0 1 0 2.83z'/><path stroke='%23ffca3a' stroke-width='1.5' d='M2 22l4-1'/></svg>") 0 24, pointer !important;
 }
