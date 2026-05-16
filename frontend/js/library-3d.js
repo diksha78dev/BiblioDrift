@@ -682,6 +682,27 @@ class BookshelfRenderer3D {
         spine.addEventListener('mousemove', (e) => this.moveTooltip(e));
         spine.addEventListener('mouseleave', () => this.hideTooltip());
         spine.addEventListener('click', () => this.openModal(book));
+       
+        // Keyboard Accessibility (Issue #534)
+spine.setAttribute('tabindex', '0');
+spine.setAttribute('role', 'button');
+spine.setAttribute('aria-label', `${book.title} by ${book.author}. Rating: ${book.rating}. Press Enter or Space to view details.`);
+
+spine.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.openModal(book);
+    }
+});
+
+spine.addEventListener('focus', () => {
+    const rect = spine.getBoundingClientRect();
+    this.showTooltip(
+        { clientX: rect.right, clientY: rect.top + rect.height / 2 },
+        book
+    );
+});
+spine.addEventListener('blur', () => this.hideTooltip());
 
         // Add mood icon if primary mood exists
         if (book.moods && book.moods.length > 0) {
