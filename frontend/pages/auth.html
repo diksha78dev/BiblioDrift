@@ -170,32 +170,7 @@
     <script src="../js/footer.js"></script>
     <script src="../js/app.js"></script>
     <script src="../script/header-scroll.js"></script>
-    <script>
-        const toggleText = document.getElementById('toggleText');
-        const authForm = document.getElementById('authForm');
-        const authTitle = document.getElementById('authTitle');
-        const nameField = document.getElementById('nameField');
-        const submitBtn = document.getElementById('submitBtn');
 
-        if (toggleText) {
-            toggleText.addEventListener('click', () => {
-                const isLogin = authForm.dataset.mode !== 'register';
-                if (isLogin) {
-                    authForm.dataset.mode = 'register';
-                    authTitle.textContent = 'Create Account';
-                    nameField.style.display = 'block';
-                    submitBtn.textContent = 'Sign Up';
-                    toggleText.textContent = 'Already have an account? Sign in.';
-                } else {
-                    authForm.dataset.mode = 'login';
-                    authTitle.textContent = 'Welcome Back';
-                    nameField.style.display = 'none';
-                    submitBtn.textContent = 'Sign In';
-                    toggleText.textContent = 'No account? Create one.';
-                }
-            });
-        }
-    </script>
     <script src="../js/pwa.js"></script>
 </body>
 
