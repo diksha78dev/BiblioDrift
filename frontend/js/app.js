@@ -1846,10 +1846,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // --- AUTH LOGIC ---
-    const toggleLink = document.querySelector('.toggle-link');
-    const authTitle = document.querySelector('.auth-container h2');
-    const authBtn = document.querySelector('.auth-btn');
-    const authForm = document.querySelector('form');
+    const toggleLink = document.getElementById('toggleText');
+    const authTitle = document.getElementById('authTitle');
+    const authBtn = document.getElementById('submitBtn');
+    const authForm = document.getElementById('authForm');
+    const nameField = document.getElementById('nameField');
 
     if (toggleLink && authTitle && authBtn && authForm) {
         let isLogin = true;
@@ -1857,10 +1858,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         toggleLink.addEventListener('click', () => {
             isLogin = !isLogin;
-            authForm.dataset.mode = isLogin ? 'login' : 'register';
-            authTitle.textContent = isLogin ? 'Sign In' : 'Join BiblioDrift';
-            authBtn.textContent = isLogin ? 'Sign In' : 'Create Account';
-            toggleLink.textContent = isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In";
+            
+            if (!isLogin) {
+                // Switch to Register Mode
+                authForm.dataset.mode = 'register';
+                authTitle.textContent = 'Create Account';
+                authBtn.textContent = 'Sign Up';
+                toggleLink.textContent = 'Already have an account? Sign in.';
+                if (nameField) nameField.style.display = 'block';
+            } else {
+                // Switch to Login Mode
+                authForm.dataset.mode = 'login';
+                authTitle.textContent = 'Welcome Back';
+                authBtn.textContent = 'Sign In';
+                toggleLink.textContent = 'No account? Create one.';
+                if (nameField) nameField.style.display = 'none';
+            }
         });
     }
 
