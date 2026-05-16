@@ -515,6 +515,7 @@ class BookRenderer {
 
         // Load flip sound
         const flipSound = new Audio('../assets/sounds/page-flip.mp3');
+        flipSound.preload = 'auto';
         flipSound.volume = 0.5;
 
         const escapeHTML = (str) => {
@@ -2368,8 +2369,13 @@ enableTapEffects();
 
 // --- creak and page flip effects ---
 const pageFlipSound = new Audio('../assets/sounds/page-flip.mp3');
+pageFlipSound.preload = 'auto';
 pageFlipSound.volume = 0.2;
 pageFlipSound.muted = true;
+
+document.addEventListener('click', () => {
+    pageFlipSound.play().catch(() => {});
+}, { once: true });
 
 
 document.addEventListener("click", (e) => {

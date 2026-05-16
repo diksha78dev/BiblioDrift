@@ -24,6 +24,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Georgia:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- Security: DOMPurify for XSS prevention -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 
     <style>
         /* Full height layout - No double scroll */
@@ -286,6 +288,20 @@
                                     <span class="slider"></span>
                                 </label>
                             </div>
+                            <div class="ambient-option">
+                                <span><i class="fa-solid fa-water"></i> Ocean Waves</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="oceanToggle">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="ambient-option">
+                                <span><i class="fa-solid fa-bolt"></i> Stormy Rain</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="stormToggle">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
                             <div class="volume-control">
                                 <label for="ambientVolume"><i class="fa-solid fa-volume-high"></i> Volume</label>
                                 <input type="range" id="ambientVolume" min="0" max="1" step="0.1" value="0.5">
@@ -369,8 +385,6 @@
     </main>
 
     <script>
-        window.MOOD_API_BASE = 'http://localhost:5001/api/v1';
-
         document.addEventListener('DOMContentLoaded', () => {
             const link = document.getElementById('navAuthLink');
             const tooltip = document.getElementById('navAuthTooltip');

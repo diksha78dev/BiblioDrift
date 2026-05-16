@@ -184,10 +184,25 @@
         text-align: center;
     }
     
-    /* Auth Form - higher specificity to override internal styles */
-    body .auth-container {
-        margin: 4rem 1rem;
-        padding: 2rem 1rem;
+    /* Auth Form - align with the dedicated auth page shell */
+    body.auth-page main.auth-main {
+        padding: 1.5rem 1rem 2.5rem;
+        min-height: auto;
+    }
+
+    body.auth-page .auth-shell {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    body.auth-page .auth-intro {
+        order: 2;
+        min-height: auto;
+    }
+
+    body.auth-page .auth-container {
+        order: 1;
+        margin: 0;
     }
     
     /* Chat Interface - higher specificity */

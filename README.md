@@ -84,7 +84,7 @@ It feels like:
 
 ### 🌌 Immersive UX
 - Glassmorphism interface
-- Ambient sounds (rain, fireplace)
+- Ambient sounds (rain, fireplace,Calm Ocean Waves,Stormy Rain)
 - Emotion-based tagging system
 
 ### ⚡ Performance & UX
