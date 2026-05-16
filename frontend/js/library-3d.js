@@ -695,7 +695,13 @@ spine.addEventListener('keydown', (e) => {
     }
 });
 
-spine.addEventListener('focus', (e) => this.showTooltip(e, book));
+spine.addEventListener('focus', () => {
+    const rect = spine.getBoundingClientRect();
+    this.showTooltip(
+        { clientX: rect.right, clientY: rect.top + rect.height / 2 },
+        book
+    );
+});
 spine.addEventListener('blur', () => this.hideTooltip());
 
         // Add mood icon if primary mood exists

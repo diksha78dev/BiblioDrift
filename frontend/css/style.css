@@ -2398,6 +2398,14 @@ auto-fit, minmax(200px, 1fr));
     transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* Fix: Ensure light text in day theme for contrast with dark background override */
+.book-tooltip .tooltip-title,
+.book-tooltip .tooltip-author,
+.book-tooltip .tooltip-rating-text,
+.book-tooltip .tooltip-description {
+    color: #f5f5f5 !important;
+}
+
 [data-theme="night"] .book-tooltip {
     background: rgba(44, 36, 32, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.1);
