@@ -1,4 +1,13 @@
 :root {
+    /* Fix: WCAG AA Contrast Floor - Issue #534 */
+.glass-panel,
+.book-tooltip,
+.book-detail-modal,
+[class*="glass"] {
+    background: rgba(0, 0, 0, 0.45) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
     /* Day Theme (Default) */
     --bg-color: #f9f7f2;
     --header-bg: rgba(249, 247, 242, 0.8);
