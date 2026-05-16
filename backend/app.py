@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
+from backend.spine_generator import create_spine
 import os
 import requests
 
@@ -685,6 +686,17 @@ def add_to_library():
             )
             db.session.add(book)
             db.session.flush()
+            # --- DYNAMIC SPINE GENERATION FOR SINGLE ADD ---
+            try:
+                # Safely parse authors if it comes in as a list structure
+                author_str = ", ".join(validated_data.authors) if isinstance(validated_data.authors, list) else validated_data.authors
+                clean_id = "".join([c if c.isalnum() else "_" for c in validated_data.title.lower().strip()])
+                
+                # Render the image file straight to frontend assets
+                create_spine(validated_data.title, author_str, clean_id)
+            except Exception as spine_err:
+                logger.error(f"Spine generation failed during direct add: {spine_err}")
+            # -----------------------------------------------
 
         existing_item = ShelfItem.query.filter_by(user_id=validated_data.user_id, book_id=book.id).with_for_update().first()
         if existing_item:
