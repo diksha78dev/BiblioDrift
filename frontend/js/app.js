@@ -2670,3 +2670,86 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.error('Service Worker registration failed:', err));
     });
 }
+// --- Connection Management & Offline Fallback Fallback Hooks ---
+
+// Function to automatically track network status changes
+function handleConnectivityChange() {
+    const offlineIndicator = document.getElementById('offline-indicator');
+    
+    if (!navigator.onLine) {
+        console.warn("🌐 Connection dropped. Switching to local sanctuary archives...");
+        
+        // Show an elegant banner to let the user know they are reading offline
+        if (offlineIndicator) {
+            offlineIndicator.style.display = 'block';
+        }
+        
+        // Fall back to loading cached books from IndexedDB
+        triggerOfflineLibraryView();
+    } else {
+        console.log("🌐 Connection restored! Connected back to the live backend cloud server.");
+        if (offlineIndicator) {
+            offlineIndicator.style.display = 'none';
+        }
+        
+        // Reload live API content if the user comes back online
+        if (typeof loadDiscoverBooks === 'function') {
+            loadDiscoverBooks();
+        }
+    }
+}
+
+// Fallback logic to retrieve data from Dexie when offline
+async function triggerOfflineLibraryView() {
+    // Look up the database instance initialized on the global window context
+    if (!window.db) {
+        console.error("Database layer is missing from window.db context.");
+        return;
+    }
+
+    try {
+        const savedBooks = await window.db.books.toArray();
+        // Target your bookshelf or matching layout grid element from the page markup
+        const libraryContainer = document.getElementById('search-results-grid') || document.querySelector('.bookshelf');
+        
+        if (!libraryContainer) return;
+
+        if (savedBooks.length === 0) {
+            // Friendly empty state UI explaining how to save books
+            libraryContainer.innerHTML = `
+                <div class="offline-empty-state" style="grid-column: 1/-1; text-align: center; color: #a0a0a0; padding: 3rem 1rem;">
+                    <p style="font-size: 1.5rem; margin-bottom: 0.5rem;">✨ You are wandering offline</p>
+                    <p style="font-size: 1rem; opacity: 0.8;">No cached books found on your shelf. Save books while online to read them anywhere.</p>
+                </div>`;
+        } else {
+            libraryContainer.innerHTML = ""; // Wipe standard layout containers
+            
+            // Render cached items back onto the UI shelf
+            savedBooks.forEach(book => {
+                const bookCard = document.createElement('div');
+                bookCard.className = 'book-card offline-card';
+                bookCard.innerHTML = `
+                    <div class="book-cover-wrapper">
+                        <img src="${book.coverUrl || '../assets/images/default-cover.png'}" alt="${book.title}" class="book-cover-img" />
+                    </div>
+                    <div class="book-details">
+                        <h3>${book.title}</h3>
+                        <p class="author-tag">By ${book.author}</p>
+                        <p class="offline-summary">${book.content}</p>
+                        <span class="offline-badge" style="background: #2c3e50; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Saved Offline</span>
+                    </div>
+                `;
+                libraryContainer.appendChild(bookCard);
+            });
+        }
+    } catch (error) {
+        console.error("Failed to load local offline assets:", error);
+    }
+}
+
+// Attach network listeners directly to the window lifecycle
+window.addEventListener('online', handleConnectivityChange);
+window.addEventListener('offline', handleConnectivityChange);
+
+// Run a status check right away on startup in case the user loads the app while already disconnected
+document.addEventListener('DOMContentLoaded', handleConnectivityChange);
