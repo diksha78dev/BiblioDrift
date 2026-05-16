@@ -33,6 +33,8 @@ def validate_content_type(allowed_types: Optional[list] = None) -> Tuple[bool, O
     """
     if allowed_types is None:
         allowed_types = ['application/json', 'application/x-www-form-urlencoded']
+
+    normalized_allowed_types = [content_type.strip().lower() for content_type in allowed_types]
     
     content_type = request.content_type
     
@@ -41,10 +43,10 @@ def validate_content_type(allowed_types: Optional[list] = None) -> Tuple[bool, O
         return False, "Missing Content-Type header"
     
     # Extract base content type (without charset)
-    base_content_type = content_type.split(';')[0].strip()
+    base_content_type = content_type.split(';')[0].strip().lower()
     
     # Check if content type is in allowed list
-    if base_content_type not in allowed_types:
+    if base_content_type not in normalized_allowed_types:
         allowed_str = ', '.join(allowed_types)
         return False, f"Invalid Content-Type: {content_type}. Allowed: {allowed_str}"
     
@@ -55,8 +57,9 @@ def safe_get_json(
     force: bool = False,
     silent: bool = False,
     max_size: int = MAX_JSON_SIZE_BYTES,
-    validate_type: bool = True
-) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+    validate_type: bool = True,
+    require_object: bool = True
+) -> Tuple[bool, Optional[Any], Optional[str]]:
     """
     Safely parse JSON from request body with size and depth limits.
     
@@ -65,6 +68,7 @@ def safe_get_json(
         silent: Return None instead of raising exceptions (default: False)
         max_size: Maximum allowed request body size in bytes (default: 1MB)
         validate_type: Validate Content-Type header (default: True)
+        require_object: Require the parsed JSON root to be an object/dict (default: True)
     
     Returns:
         Tuple[bool, Optional[Dict], Optional[str]]: (success, parsed_data, error_message)
@@ -123,11 +127,10 @@ def safe_get_json(
             return False, None, error_msg
         
         # Step 6: Ensure parsed data is dict-like for API payloads
-        if not isinstance(parsed_data, dict):
-            if not force:
-                error_msg = "JSON root must be an object, not array or primitive"
-                logger.warning(error_msg)
-                return False, None, error_msg
+        if require_object and not isinstance(parsed_data, dict):
+            error_msg = "JSON root must be an object, not array or primitive"
+            logger.warning(error_msg)
+            return False, None, error_msg
         
         logger.debug(f"Successfully parsed JSON payload: {len(raw_data)} bytes")
         return True, parsed_data, None
@@ -144,28 +147,33 @@ def safe_get_json(
 
 def _validate_depth(obj: Any, current_depth: int = 0, max_depth: int = MAX_NESTED_DEPTH) -> bool:
     """
-    Recursively validate JSON nesting depth to prevent stack overflow attacks.
+    Iteratively validate JSON nesting depth to prevent stack overflow attacks.
     
     Args:
         obj: Object to validate
-        current_depth: Current recursion depth (internal use)
+        current_depth: Starting depth for the provided object (internal use)
         max_depth: Maximum allowed depth
     
     Returns:
         bool: True if depth is within limits
     """
-    if current_depth > max_depth:
-        return False
-    
-    if isinstance(obj, dict):
-        for value in obj.values():
-            if not _validate_depth(value, current_depth + 1, max_depth):
-                return False
-    elif isinstance(obj, (list, tuple)):
-        for item in obj:
-            if not _validate_depth(item, current_depth + 1, max_depth):
-                return False
-    
+    stack = [(obj, current_depth)]
+
+    while stack:
+        value, depth = stack.pop()
+
+        if depth > max_depth:
+            return False
+
+        if isinstance(value, dict):
+            next_depth = depth + 1
+            for child in value.values():
+                stack.append((child, next_depth))
+        elif isinstance(value, (list, tuple)):
+            next_depth = depth + 1
+            for child in value:
+                stack.append((child, next_depth))
+
     return True
 
 
@@ -218,8 +226,16 @@ def get_request_arg_safe(
         # Type conversion with validation
         try:
             if arg_type == bool:
-                # Handle boolean conversion carefully
-                parsed_value = raw_value.lower() in ('true', '1', 'yes', 'on')
+                # Accept only explicit boolean values; reject ambiguous strings.
+                normalized_value = raw_value.strip().lower()
+                true_values = ('true', '1', 'yes', 'on')
+                false_values = ('false', '0', 'no', 'off')
+                if normalized_value in true_values:
+                    parsed_value = True
+                elif normalized_value in false_values:
+                    parsed_value = False
+                else:
+                    raise ValueError("invalid boolean value")
             elif arg_type == int:
                 parsed_value = int(raw_value)
             elif arg_type == float:

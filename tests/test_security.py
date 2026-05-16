@@ -6,14 +6,17 @@ Run with: python -m pytest tests/test_security.py -v
 """
 import pytest
 import json
+import sys
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
+from flask import Flask, jsonify
 
 # Import security modules
 from backend.security_parsers import (
-    safe_get_json, get_request_arg_safe, validate_content_type,
+    safe_get_json, get_request_arg_safe, validate_content_type, _validate_depth,
     JSONParseError, MAX_JSON_SIZE_BYTES
 )
+from backend.middleware import validate_content_type_middleware, safe_request_handler
 from backend.sanitizer import (
     sanitize_string, sanitize_payload, contains_malicious_patterns,
     is_likely_html_attack, sanitize_for_ai, sanitize_for_display, sanitize_for_storage
@@ -23,6 +26,14 @@ from backend.validators import validate_google_books_id, validate_request, AddTo
 
 class TestJSONParsing:
     """Test safe JSON parsing with malicious payloads."""
+
+    def _mock_json_request(self, payload: str, content_type: str = "application/json"):
+        mock_request = MagicMock()
+        mock_request.content_type = content_type
+        mock_request.content_length = len(payload)
+        mock_request.is_json = content_type.startswith("application/json")
+        mock_request.get_data.return_value = payload
+        return mock_request
     
     def test_oversized_json_payload(self):
         """Test that oversized JSON payloads are rejected."""
@@ -54,6 +65,49 @@ class TestJSONParsing:
             assert False, "Should have raised JSONDecodeError"
         except json.JSONDecodeError:
             pass  # Expected
+
+    def test_force_does_not_allow_non_object_root(self):
+        """Force mode should not bypass object-root validation."""
+        payload = json.dumps([{"id": 1}])
+
+        with patch("backend.security_parsers.request", self._mock_json_request(payload)):
+            success, data, error = safe_get_json(force=True)
+
+        assert not success
+        assert data is None
+        assert error == "JSON root must be an object, not array or primitive"
+
+    def test_non_object_root_allowed_when_explicitly_opted_out(self):
+        """Callers can explicitly accept array roots when they need to."""
+        payload = json.dumps([{"id": 1}])
+
+        with patch("backend.security_parsers.request", self._mock_json_request(payload)):
+            success, data, error = safe_get_json(force=True, require_object=False)
+
+        assert success
+        assert error is None
+        assert data == [{"id": 1}]
+
+    def test_validate_depth_handles_deep_payload_without_recursion_error(self):
+        """Iterative traversal should reject deep payloads without recursion overhead."""
+        nested = {}
+        current = nested
+        for _ in range(30):
+            current["nested"] = {}
+            current = current["nested"]
+
+        old_limit = sys.getrecursionlimit()
+        try:
+            try:
+                sys.setrecursionlimit(20)
+            except RecursionError:
+                pytest.skip("Environment prevents lowering recursion limit; skipping depth test")
+            assert _validate_depth(nested, max_depth=10) is False
+        finally:
+            try:
+                sys.setrecursionlimit(old_limit)
+            except Exception:
+                pass
 
 
 class TestXSSSanitization:
@@ -290,23 +344,75 @@ class TestGoogleBooksIdValidation:
 
 class TestRequestArgumentValidation:
     """Test safe retrieval and validation of request arguments."""
+
+    def _request_context(self, query_string=None):
+        app = Flask(__name__)
+        return app.test_request_context("/search", query_string=query_string or {})
     
     def test_integer_parameter_validation(self):
         """Test integer parameter validation."""
-        # Valid integer
-        success, value, error = get_request_arg_safe('test', int, default=0)
-        # In a real test context with Flask, this would work
-        # For unit test, we're just checking the function exists and can be called
+        with self._request_context({"test": "42"}):
+            success, value, error = get_request_arg_safe("test", int, default=0)
+
+        assert success
+        assert value == 42
+        assert error is None
+
+    def test_integer_parameter_rejects_negative_values(self):
+        """Negative integers should be rejected by the validation helper."""
+        with self._request_context({"test": "-1"}):
+            success, value, error = get_request_arg_safe("test", int, default=0)
+
+        assert not success
+        assert value is None
+        assert error == "Parameter 'test' must be non-negative"
+
+    def test_boolean_parameter_accepts_explicit_true_and_false(self):
+        """Boolean parameters should parse only explicit true/false values."""
+        with self._request_context({"admin": "yes"}):
+            success, value, error = get_request_arg_safe("admin", bool)
+
+        assert success
+        assert value is True
+        assert error is None
+
+        with self._request_context({"admin": "off"}):
+            success, value, error = get_request_arg_safe("admin", bool)
+
+        assert success
+        assert value is False
+        assert error is None
+
+    def test_boolean_parameter_rejects_invalid_string(self):
+        """Invalid boolean strings should return an error instead of coercing to False."""
+        with self._request_context({"admin": "banana"}):
+            success, value, error = get_request_arg_safe("admin", bool)
+
+        assert not success
+        assert value is None
+        assert error == "Invalid bool for parameter 'admin': banana"
     
     def test_whitelist_validation(self):
         """Test whitelist validation for enum-like parameters."""
-        # With actual Flask request context (would be tested in integration)
-        pass
+        with self._request_context({"sort_by": "rating"}):
+            success, value, error = get_request_arg_safe(
+                "sort_by",
+                str,
+                allowed_values=["date", "name", "rating"],
+            )
+
+        assert success
+        assert value == "rating"
+        assert error is None
     
     def test_required_parameter_check(self):
         """Test that required parameters are enforced."""
-        # This would be tested with Flask request context
-        pass
+        with self._request_context({}):
+            success, value, error = get_request_arg_safe("page", int, required=True)
+
+        assert not success
+        assert value is None
+        assert error == "Missing required parameter: page"
 
 
 class TestContentTypeValidation:
@@ -319,6 +425,50 @@ class TestContentTypeValidation:
 
         assert is_valid
         assert error is None
+
+    def test_normalizes_case_and_parameters(self):
+        """Content-Type validation should ignore charset parameters and casing."""
+        with patch(
+            "backend.security_parsers.request",
+            SimpleNamespace(content_type="Application/JSON; charset=utf-8")
+        ):
+            is_valid, error = validate_content_type()
+
+        assert is_valid
+        assert error is None
+
+
+class TestMiddlewareContentTypeValidation:
+    """Test middleware Content-Type validation paths."""
+
+    def test_parameterized_form_content_type_is_accepted_consistently(self):
+        """Middleware and safe_request_handler should treat parameterized form headers the same way."""
+        app = Flask(__name__)
+
+        @app.post("/middleware")
+        @validate_content_type_middleware
+        def middleware_endpoint():
+            return jsonify({"ok": True})
+
+        @app.post("/safe")
+        @safe_request_handler(require_json=False)
+        def safe_endpoint():
+            return jsonify({"ok": True})
+
+        with app.test_client() as client:
+            middleware_response = client.post(
+                "/middleware",
+                data="name=value",
+                headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
+            )
+            safe_response = client.post(
+                "/safe",
+                data="name=value",
+                headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
+            )
+
+        assert middleware_response.status_code == 200
+        assert safe_response.status_code == 200
 
 
 class TestHTMLContentProtection:

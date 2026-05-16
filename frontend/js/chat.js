@@ -11,9 +11,11 @@ class ChatInterface {
         this.conversationHistory = [];
         this.isProcessing = false;
 
-        // Ensure backend connection is initialized
-        if (typeof window !== 'undefined' && !window.MOOD_API_BASE) {
-            window.MOOD_API_BASE = 'http://127.0.0.1:5000/api/v1';
+        // Ensure backend connection is initialized with proper fallback
+        if (typeof window !== 'undefined') {
+            if (!window.MOOD_API_BASE || window.MOOD_API_BASE.includes(':5001')) {
+                window.MOOD_API_BASE = 'http://127.0.0.1:5000/api/v1';
+            }
         }
 
         this.init();
@@ -217,7 +219,10 @@ Tell me: what is stirring in you today?`,
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    history: this.conversationHistory.slice(-10) // Send last 10 messages for better session memory
+                    // Send token-budget-trimmed history so the backend receives
+                    // only what fits in the context window. The backend also
+                    // trims independently, but trimming here reduces payload size.
+                    history: this._buildTokenBudgetHistory(userMessage)
                 })
             });
 
@@ -269,6 +274,77 @@ Tell me: what is stirring in you today?`,
             message: this.generateContextualResponse(userMessage, books),
             books: books
         };
+    }
+
+    /**
+     * Estimate the token count of a string using the standard ~4 chars/token
+     * heuristic. Mirrors the backend's _estimate_tokens() method so both sides
+     * agree on budget calculations without requiring a tokenizer library.
+     *
+     * @param {string} text
+     * @returns {number} Estimated token count (minimum 1)
+     */
+    _estimateTokens(text) {
+        return Math.max(1, Math.floor((text || '').length / 4));
+    }
+
+    /**
+     * Build a trimmed conversation history array that fits within the token
+     * budget before sending to the backend.
+     *
+     * Budget calculation (conservative, matches backend logic):
+     *   available = MODEL_CONTEXT_LIMIT - SYSTEM_PROMPT_TOKENS - RESPONSE_RESERVE - SAFETY_MARGIN
+     *
+     * We use the smallest common context limit (4096 for gpt-3.5-turbo) so the
+     * payload is safe regardless of which LLM the backend selects.
+     *
+     * Only 'type' and 'content' fields are sent — the backend ChatMessage
+     * schema only accepts those two fields.
+     *
+     * @param {string} currentMessage - The message about to be sent (used for budget accounting)
+     * @returns {Array<{type: string, content: string}>} Trimmed history
+     */
+    _buildTokenBudgetHistory(currentMessage) {
+        // Conservative limits matching the smallest supported model (gpt-3.5-turbo)
+        const MODEL_CONTEXT_LIMIT = 4096;
+        const SYSTEM_PROMPT_TOKENS = 400;  // ~1600 chars for Elara's system prompt
+        const RESPONSE_RESERVE = 600;      // tokens reserved for the model's reply
+        const SAFETY_MARGIN = 64;
+        const CURRENT_MSG_TOKENS = this._estimateTokens(currentMessage);
+
+        const budget =
+            MODEL_CONTEXT_LIMIT -
+            SYSTEM_PROMPT_TOKENS -
+            RESPONSE_RESERVE -
+            SAFETY_MARGIN -
+            CURRENT_MSG_TOKENS;
+
+        if (budget <= 0) {
+            // Current message alone is near the limit — send no history
+            return [];
+        }
+
+        // Walk history newest-first, accumulate until budget is exhausted
+        const kept = [];
+        let tokensUsed = 0;
+
+        for (let i = this.conversationHistory.length - 1; i >= 0; i--) {
+            const msg = this.conversationHistory[i];
+            // Skip messages without content (e.g. welcome message edge cases)
+            if (!msg || !msg.content) continue;
+
+            const msgTokens = this._estimateTokens(msg.content);
+            if (tokensUsed + msgTokens > budget) {
+                break; // Adding this message would overflow the budget
+            }
+
+            kept.push({ type: msg.type, content: msg.content });
+            tokensUsed += msgTokens;
+        }
+
+        // Reverse so history is chronological (oldest → newest)
+        kept.reverse();
+        return kept;
     }
 
     async searchGoogleBooks(query) {
@@ -350,11 +426,18 @@ Tell me: what is stirring in you today?`,
             if (!paragraph.trim()) return;
             const p = document.createElement('p');
             if (isAI) {
-                // Render **bold** and *italic* safely — no raw HTML from user
-                p.innerHTML = paragraph.trim()
+                // Apply markdown replacements then sanitize with DOMPurify
+                let content = paragraph.trim()
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     .replace(/\n/g, '<br>');
+                
+                // Sanitize HTML to prevent XSS attacks
+                p.innerHTML = DOMPurify.sanitize(content, {
+                    ALLOWED_TAGS: ['strong', 'em', 'br', 'b', 'i', 'u'],
+                    ALLOWED_ATTR: [],
+                    KEEP_CONTENT: true
+                });
             } else {
                 p.textContent = paragraph.trim();
             }

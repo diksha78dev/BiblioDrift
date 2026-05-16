@@ -21,6 +21,8 @@ secrets/
 
 __pycache__/
 *.pyc
+# Migration compiled files (scripts themselves are tracked)
+backend/migrations/versions/__pycache__/
 
 # Netlify build output
 dist/

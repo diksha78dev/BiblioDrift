@@ -8,7 +8,12 @@ import re
 from pydantic import BaseModel, Field, field_validator, model_validator, EmailStr
 from typing import Optional, List, Dict, Any, Literal
 from enum import Enum
-from sanitizer import sanitize_string, sanitize_for_ai
+
+# Handle both absolute and relative imports
+try:
+    from .sanitizer import sanitize_string, sanitize_for_ai
+except ImportError:
+    from sanitizer import sanitize_string, sanitize_for_ai
 
 
 GOOGLE_BOOKS_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{12,13}$')
@@ -30,8 +35,8 @@ class ShelfType(str, Enum):
 
 class ChatMessage(BaseModel):
     """Schema for chat message history items."""
-    type: str = Field(..., description="Message type (user/bot)")
-    content: str = Field(..., max_length=1000, description="Message content")
+    type: str = Field(..., description="Message type (user/bookseller)")
+    content: str = Field(..., max_length=2000, description="Message content")
     
     @field_validator('content')
     @classmethod
@@ -180,7 +185,7 @@ class RegisterRequest(BaseModel):
     """Request schema for POST /api/v1/register endpoint."""
     username: str = Field(..., min_length=3, max_length=50, description="Username (3-50 characters)")
     email: EmailStr = Field(..., description="Valid email address")
-    password: str = Field(..., min_length=6, max_length=100, description="Password (minimum 6 characters)")
+    password: str = Field(..., min_length=8, max_length=100, description="Password (minimum 8 characters)")
     
     @field_validator('username')
     @classmethod
@@ -190,7 +195,6 @@ class RegisterRequest(BaseModel):
         if not v.replace('_', '').isalnum():
             raise ValueError('Username must contain only letters, numbers, and underscores.')
         return v
-
 
 class LoginRequest(BaseModel):
     """Request schema for POST /api/v1/login endpoint."""
