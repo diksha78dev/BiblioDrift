@@ -702,7 +702,8 @@ scene.innerHTML = `
             });
             if (res.ok) {
                 const data = await res.json();
-                return data.data?.vibe || null;
+                const payload = data.data || data;
+                return payload?.vibe || payload?.bookseller_note || payload?.insight || payload?.note || null;
             }
         } catch (e) {
             // Silently fail to use fallback
