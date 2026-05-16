@@ -2311,13 +2311,36 @@ async function handleAuth(event) {
         payload = { username: email, password: password };
     }
 
+    // =========================================================================
+    // SECURITY ENHANCEMENT: CSRF TOKEN INTEGRATION
+    // =========================================================================
+    // We retrieve the CSRF token from the hidden input field 'csrf_token'.
+    // This token is then injected into the 'X-CSRF-Token' header. 
+    // The Flask-WTF backend expects this header for all state-changing
+    // AJAX requests. This protects against Cross-Site Request Forgery 
+    // by ensuring that the request is authenticated via the browser's 
+    // Same-Origin Policy and session-bound secrets.
+    // =========================================================================
+    const csrfToken = document.getElementById('csrf_token')?.value;
+
     try {
-        const res = await fetch(`${MOOD_API_BASE}${endpoint.replace('/api/v1', '')}`, {
+        const fetchOptions = {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json'
+            },
             credentials: 'include',
             body: JSON.stringify(payload)
-        });
+        };
+
+        // Inject CSRF token into headers if available
+        if (csrfToken) {
+            fetchOptions.headers['X-CSRF-Token'] = csrfToken;
+        } else if (IS_DEV) {
+            console.warn('[Security] No CSRF token found in DOM. Request may be rejected by server.');
+        }
+
+        const res = await fetch(`${MOOD_API_BASE}${endpoint.replace('/api/v1', '')}`, fetchOptions);
 
         const data = await res.json();
 

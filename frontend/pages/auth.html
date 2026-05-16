@@ -150,6 +150,19 @@
                     <input type="password" id="password" class="auth-input" placeholder="Password" value="demo123" required autocomplete="current-password">
                 </div>
                 
+                <!-- 
+                    =============================================================
+                    SECURITY COMPLIANCE: CSRF TOKEN FIELD
+                    =============================================================
+                    This hidden input is dynamically populated with a one-time 
+                    security token provided by the backend. It protects against
+                    Cross-Site Request Forgery attacks by ensuring that the 
+                    form submission originated from this specific application 
+                    instance.
+                    =============================================================
+                -->
+                <input type="hidden" id="csrf_token" name="csrf_token" value="">
+                
                 <!-- Primary Action Button -->
                 <button type="submit" id="submitBtn" class="auth-btn">
                     Sign In
@@ -200,6 +213,43 @@
         }
     </script>
     <script src="../js/pwa.js"></script>
+    <script>
+        /**
+         * ==============================================================================
+         * CSRF INITIALIZATION LOGIC
+         * ==============================================================================
+         * On document load, we query the backend's CSRF endpoint to retrieve a 
+         * fresh security token. This token is then stored in the hidden form 
+         * field and utilized in the 'handleAuth' submission headers.
+         * ==============================================================================
+         */
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // We use MOOD_API_BASE from config.js
+                const response = await fetch(`${MOOD_API_BASE}/csrf-token`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const token = result.data?.csrf_token;
+                    
+                    if (token) {
+                        const csrfInput = document.getElementById('csrf_token');
+                        if (csrfInput) {
+                            csrfInput.value = token;
+                            if (window.IS_DEV) console.log('[Security] CSRF Token initialized successfully.');
+                        }
+                    }
+                } else {
+                    console.error('[Security] Failed to fetch CSRF token from backend.');
+                }
+            } catch (error) {
+                console.error('[Security] Network error while fetching security token:', error);
+            }
+        });
+    </script>
 </body>
 
 </html>
