@@ -494,21 +494,25 @@ main {
 
 .book-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.35rem;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 
 .btn-icon {
     border: none;
     background: none;
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 1rem;
+    padding: 0.15rem 0.25rem;
     opacity: 0.6;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, transform 0.12s;
 }
 
 .btn-icon:hover {
     opacity: 1;
-    transform: scale(1.1);
+    transform: scale(1.08);
 }
 
 /* --- Virtual Shelves --- */
