@@ -1942,16 +1942,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         searchInput.value = query;
     }
 
-    if (query && document.getElementById('row-rainy')) {
-        document.querySelector('main').innerHTML = `
-            <section class="hero">
-                <h1>Results for "${query}"</h1>
-                <p>Found specific books matching your vibe.</p>
-            </section>
-            <section class="curated-section">
-                <div class="curated-row" id="search-results" style="flex-wrap: wrap; justify-content: center;"></div>
-            </section>`;
-        renderer.renderCuratedSection(query, 'search-results', 20);
+    if (query && document.getElementById('search-results-section')) {
+        const searchSection = document.getElementById('search-results-section');
+        const queryDisplay = document.getElementById('search-query-display');
+        
+        queryDisplay.textContent = `Results for "${query}"`;
+        searchSection.removeAttribute('hidden');
+        
+        // Hide other main content to focus on search without destroying modals
+        document.querySelectorAll('.curated-section:not(#search-results-section), .hero').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        renderer.renderCuratedSection(query, 'search-results-grid', 20);
     } else if (document.getElementById('row-rainy')) {
         console.log('📚 Initializing Curated Discovery Sections...');
         const discoveryShelves = [
