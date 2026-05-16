@@ -426,11 +426,18 @@ Tell me: what is stirring in you today?`,
             if (!paragraph.trim()) return;
             const p = document.createElement('p');
             if (isAI) {
-                // Render **bold** and *italic* safely — no raw HTML from user
-                p.innerHTML = paragraph.trim()
+                // Apply markdown replacements then sanitize with DOMPurify
+                let content = paragraph.trim()
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     .replace(/\n/g, '<br>');
+                
+                // Sanitize HTML to prevent XSS attacks
+                p.innerHTML = DOMPurify.sanitize(content, {
+                    ALLOWED_TAGS: ['strong', 'em', 'br', 'b', 'i', 'u'],
+                    ALLOWED_ATTR: [],
+                    KEEP_CONTENT: true
+                });
             } else {
                 p.textContent = paragraph.trim();
             }
