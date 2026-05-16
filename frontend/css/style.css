@@ -470,6 +470,38 @@ main {
     margin-bottom: 1rem;
 }
 
+/* Read details Button */
+.read-details-btn {
+    background-color: #3e2723; 
+    color: #fffdf9;
+    border: 1px solid var(--accent-gold);
+    padding: 6px 16px; 
+    border-radius: 6px;
+    font-family: 'Playfair Display', 'Georgia', serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px; 
+    margin: 8px auto 14px auto;
+    width: 96%; 
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.2s ease-in-out;
+    white-space: nowrap; 
+}
+
+.read-details-btn:hover {
+    background-color: #5d4037;
+}
+
+.book__face--back .book-actions {
+    justify-content: space-around;
+    padding: 0 10px;
+    width: 100%;
+    margin-bottom: -6px;
+}
+
 .book-actions {
     display: flex;
     gap: 0.5rem;

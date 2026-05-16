@@ -551,8 +551,12 @@ class BookRenderer {
                             ${bookData.moods.map(m => `<span style="font-size: 0.6rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 10px;"><i class="fa-solid ${this.getMoodIcon(m)}"></i> ${m}</span>`).join('')}
                         </div>
                         ` : ''}
-                        <div class="book-blurb" data-book-id="${escapeHTML(id)}" style="font-size: 0.8rem; line-height: 1.4; color: var(--text-muted); text-align: justify; min-height: 60px;">${safeOriginalDescription}</div>
                     </div>
+
+                    <button class="read-details-btn" title="Read Details">
+                        <i class="fa-solid fa-circle-info"></i> Read Details
+                    </button>
+
                     ${shelf === 'current' ? `
                     <div class="reading-progress">
                         <input type="range" min="0" max="100" value="${progress}" class="progress-slider" />
@@ -560,7 +564,6 @@ class BookRenderer {
                     </div>` : ''}
                     <div class="book-actions">
                         <button class="btn-icon add-btn" title="Add to Library"><i class="fa-regular fa-heart"></i></button>
-                        <button class="btn-icon info-btn" title="Read Details"><i class="fa-solid fa-info"></i></button>
                         <button class="btn-icon share-btn" title="Share Book"><i class="fa-solid fa-share-nodes"></i></button>
                         <button class="btn-icon flip-back-btn" title="Flip Back"><i class="fa-solid fa-rotate-left"></i></button>
                     </div>
@@ -570,20 +573,6 @@ class BookRenderer {
                 <strong>${safeTitle}</strong><br><small>${safeAuthors}</small>
             </div>
         `;
-
-        // Fetch AI-generated blurb asynchronously
-        const blurbElement = scene.querySelector('.book-blurb');
-        if (blurbElement) {
-            this.fetchAIBlurb(id, title, authors, volumeInfo.description || "", categories)
-                .then(aiBlurb => {
-                    if (aiBlurb && blurbElement) {
-                        blurbElement.textContent = aiBlurb;
-                    }
-                })
-                .catch(err => {
-                    // Silently keep fallback description
-                });
-        }
 
         // Interaction: Progress Slider
         const slider = scene.querySelector('.progress-slider');
@@ -631,7 +620,7 @@ class BookRenderer {
         });
 
         // Info Button
-        scene.querySelector('.info-btn').addEventListener('click', (e) => {
+        scene.querySelector('.read-details-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             this.openModal(bookData);
         });
