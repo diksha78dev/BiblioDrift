@@ -135,6 +135,7 @@ function clearStoredAuthState() {
     SafeStorage.remove('bibliodrift_user');
     SafeStorage.remove('bibliodrift_token');
     SafeStorage.remove('isLoggedIn');
+    authSessionPromise = null;
 }
 
 function parseStoredUser() {
@@ -174,41 +175,45 @@ async function verifyStoredAuthSession() {
     authSessionPromise = (async () => {
         const token = SafeStorage.get('bibliodrift_token');
         const storedUser = parseStoredUser();
-
-        if (!token) {
-            if (storedUser || SafeStorage.get('isLoggedIn') === 'true') {
-                clearStoredAuthState();
-            }
-            return null;
-        }
+        const thinksLoggedIn = SafeStorage.get('isLoggedIn') === 'true';
 
         if (token === 'demo-token-12345') {
             return storedUser;
         }
 
+        // Real logins use HttpOnly JWT cookies (see backend JWT_TOKEN_LOCATION). Optional CSRF cookie is readable by JS.
+        const shouldProbe = thinksLoggedIn || storedUser || getCookie('csrf_access_token');
+        if (!shouldProbe) {
+            return null;
+        }
+
         try {
+            const headers = {};
+            const csrf = getCookie('csrf_access_token');
+            if (csrf) {
+                headers['X-CSRF-TOKEN'] = csrf;
+            }
+
             const response = await fetch(`${MOOD_API_BASE}/auth/verify`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                method: 'GET',
+                credentials: 'include',
+                headers
             });
 
-            if (!response.ok) {
-                if (response.status === 401 || response.status === 422) {
-                    clearStoredAuthState();
+            if (response.ok) {
+                const data = await response.json();
+                const verifiedUser = data.user || storedUser;
+                if (verifiedUser) {
+                    SafeStorage.set('bibliodrift_user', JSON.stringify(verifiedUser));
                 }
-                return null;
+                SafeStorage.set('isLoggedIn', 'true');
+                return verifiedUser || null;
             }
 
-            const data = await response.json();
-            const verifiedUser = data.user || storedUser;
-
-            if (verifiedUser) {
-                SafeStorage.set('bibliodrift_user', JSON.stringify(verifiedUser));
+            if (response.status === 401 || response.status === 422) {
+                clearStoredAuthState();
             }
-            SafeStorage.set('isLoggedIn', 'true');
-
-            return verifiedUser;
+            return null;
         } catch (error) {
             console.warn('Auth verification failed; using cached session state if available.', error);
             return storedUser;
