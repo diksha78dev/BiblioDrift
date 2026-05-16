@@ -6,12 +6,13 @@ Run with: python -m pytest tests/test_security.py -v
 """
 import pytest
 import json
+import sys
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 # Import security modules
 from backend.security_parsers import (
-    safe_get_json, get_request_arg_safe, validate_content_type,
+    safe_get_json, get_request_arg_safe, validate_content_type, _validate_depth,
     JSONParseError, MAX_JSON_SIZE_BYTES
 )
 from backend.sanitizer import (
@@ -23,6 +24,14 @@ from backend.validators import validate_google_books_id, validate_request, AddTo
 
 class TestJSONParsing:
     """Test safe JSON parsing with malicious payloads."""
+
+    def _mock_json_request(self, payload: str, content_type: str = "application/json"):
+        mock_request = MagicMock()
+        mock_request.content_type = content_type
+        mock_request.content_length = len(payload)
+        mock_request.is_json = content_type.startswith("application/json")
+        mock_request.get_data.return_value = payload
+        return mock_request
     
     def test_oversized_json_payload(self):
         """Test that oversized JSON payloads are rejected."""
@@ -54,6 +63,43 @@ class TestJSONParsing:
             assert False, "Should have raised JSONDecodeError"
         except json.JSONDecodeError:
             pass  # Expected
+
+    def test_force_does_not_allow_non_object_root(self):
+        """Force mode should not bypass object-root validation."""
+        payload = json.dumps([{"id": 1}])
+
+        with patch("backend.security_parsers.request", self._mock_json_request(payload)):
+            success, data, error = safe_get_json(force=True)
+
+        assert not success
+        assert data is None
+        assert error == "JSON root must be an object, not array or primitive"
+
+    def test_non_object_root_allowed_when_explicitly_opted_out(self):
+        """Callers can explicitly accept array roots when they need to."""
+        payload = json.dumps([{"id": 1}])
+
+        with patch("backend.security_parsers.request", self._mock_json_request(payload)):
+            success, data, error = safe_get_json(force=True, require_object=False)
+
+        assert success
+        assert error is None
+        assert data == [{"id": 1}]
+
+    def test_validate_depth_handles_deep_payload_without_recursion_error(self):
+        """Iterative traversal should reject deep payloads without recursion overhead."""
+        nested = {}
+        current = nested
+        for _ in range(30):
+            current["nested"] = {}
+            current = current["nested"]
+
+        old_limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(20)
+            assert _validate_depth(nested, max_depth=10) is False
+        finally:
+            sys.setrecursionlimit(old_limit)
 
 
 class TestXSSSanitization:
@@ -290,6 +336,9 @@ class TestGoogleBooksIdValidation:
 
 class TestRequestArgumentValidation:
     """Test safe retrieval and validation of request arguments."""
+
+    def _mock_request_args(self, args):
+        return SimpleNamespace(args=args)
     
     def test_integer_parameter_validation(self):
         """Test integer parameter validation."""
@@ -297,6 +346,31 @@ class TestRequestArgumentValidation:
         success, value, error = get_request_arg_safe('test', int, default=0)
         # In a real test context with Flask, this would work
         # For unit test, we're just checking the function exists and can be called
+
+    def test_boolean_parameter_accepts_explicit_true_and_false(self):
+        """Boolean parameters should parse only explicit true/false values."""
+        with patch("backend.security_parsers.request", self._mock_request_args({"admin": "yes"})):
+            success, value, error = get_request_arg_safe("admin", bool)
+
+        assert success
+        assert value is True
+        assert error is None
+
+        with patch("backend.security_parsers.request", self._mock_request_args({"admin": "off"})):
+            success, value, error = get_request_arg_safe("admin", bool)
+
+        assert success
+        assert value is False
+        assert error is None
+
+    def test_boolean_parameter_rejects_invalid_string(self):
+        """Invalid boolean strings should return an error instead of coercing to False."""
+        with patch("backend.security_parsers.request", self._mock_request_args({"admin": "banana"})):
+            success, value, error = get_request_arg_safe("admin", bool)
+
+        assert not success
+        assert value is None
+        assert error == "Invalid bool for parameter 'admin': banana"
     
     def test_whitelist_validation(self):
         """Test whitelist validation for enum-like parameters."""

@@ -117,6 +117,56 @@
         min-width: 100%;
     }
 
+    /* --- 3D Bookshelf Mobile Improvements --- */
+    .bookshelf-3d-container {
+        perspective: 800px; /* Reduce perspective strength for mobile */
+        perspective-origin: center 50%; /* Center the perspective origin */
+        padding: 1rem 0; /* Reduce vertical padding */
+    }
+
+    .bookshelf-3d {
+        padding: 15px 12px 10px; /* Tighter padding */
+        margin: 0 -5px; /* Reduce negative margin overflow */
+        min-height: 200px; /* Reduce min-height for mobile */
+        transform: rotateX(0); /* Remove tilt on mobile */
+    }
+
+    .books-row-3d {
+        gap: 2px; /* Minimal gap between books */
+        height: 150px; /* Reduce height for small screens */
+        overflow-x: auto; /* Enable scrolling */
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px;
+    }
+
+    .book-spine-3d {
+        transform: rotateY(-3deg) rotateZ(-2deg); /* Subtle rotation only */
+        margin-right: 1px; /* Minimal spacing */
+        width: auto; /* Auto width to prevent overflow */
+        flex-shrink: 0;
+        min-width: 40px; /* Minimum width for readability */
+    }
+
+    .book-spine-3d:nth-child(even),
+    .book-spine-3d:nth-child(3n),
+    .book-spine-3d:nth-child(4n) {
+        transform: rotateY(-2deg) rotateZ(-1deg); /* Reduce variation on mobile */
+    }
+
+    .book-spine-3d:hover {
+        transform: rotateY(-1deg) rotateZ(0deg) translateZ(10px) translateY(-5px); /* Subtle hover effect */
+    }
+
+    .spine-title {
+        font-size: 0.6rem;
+        padding: 2px 1px;
+    }
+
+    .spine-author {
+        font-size: 0.5rem;
+        margin-top: 4px;
+    }
+
     /* Modal Adjustments */
     .modal-content {
         width: 95%;
@@ -177,6 +227,65 @@
     }
 }
 
+@media (max-width: 600px) {
+    /* --- Tablet to Phone Transition (600px-768px) --- */
+    .bookshelf-3d-container {
+        perspective: 750px;
+        perspective-origin: center 52%;
+        padding: 0.75rem 0;
+    }
+
+    .bookshelf-3d {
+        padding: 12px 15px 8px;
+        margin: 0 -4px;
+        min-height: 210px;
+        transform: rotateX(0.5deg);
+    }
+
+    .books-row-3d {
+        gap: 2px;
+        height: 155px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px;
+    }
+
+    .book-spine-3d {
+        transform: rotateY(-2deg) rotateZ(-1deg);
+        margin-right: 0;
+        flex-shrink: 0;
+        min-width: 38px;
+    }
+
+    .book-spine-3d:nth-child(even),
+    .book-spine-3d:nth-child(3n) {
+        transform: rotateY(-1deg) rotateZ(-1deg);
+    }
+
+    .book-spine-3d:hover {
+        transform: rotateY(-1deg) translateZ(10px) translateY(-6px);
+    }
+
+    .spine-title {
+        font-size: 0.58rem;
+        padding: 1.5px 0.75px;
+    }
+
+    .spine-author {
+        font-size: 0.48rem;
+        margin-top: 3px;
+    }
+
+    .shelf-section-3d {
+        margin-bottom: 3rem;
+    }
+
+    .shelf-section-3d .shelf-label {
+        font-size: 1.15rem;
+        margin-bottom: 1rem;
+    }
+}
+
 @media (max-width: 480px) {
     :root {
         --book-width: 110px;
@@ -212,6 +321,65 @@
     /* Hide some secondary UI if needed or stacks further */
     .search-bar {
         margin-bottom: 0.5rem;
+    }
+
+    /* --- 3D Bookshelf for Very Small Phones --- */
+    .bookshelf-3d-container {
+        perspective: 600px; /* Further reduce perspective */
+        perspective-origin: center 60%;
+        padding: 0.5rem 0;
+    }
+
+    .bookshelf-3d {
+        padding: 10px 8px 8px; /* Minimal padding */
+        margin: 0 -3px;
+        min-height: 180px;
+        transform: rotateX(0);
+    }
+
+    .books-row-3d {
+        gap: 1px; /* Ultra-minimal gap */
+        height: 140px; /* Further reduce height */
+        padding-bottom: 8px;
+    }
+
+    .book-spine-3d {
+        transform: rotateY(-1deg); /* Minimal rotation */
+        margin-right: 0; /* No margin, gap handles it */
+        min-width: 35px;
+    }
+
+    .book-spine-3d:nth-child(even),
+    .book-spine-3d:nth-child(3n),
+    .book-spine-3d:nth-child(4n) {
+        transform: rotateY(-1deg);
+    }
+
+    .book-spine-3d:hover {
+        transform: rotateY(0deg) translateZ(8px) translateY(-3px);
+    }
+
+    .spine-title {
+        font-size: 0.55rem;
+        padding: 1px 0.5px;
+    }
+
+    .spine-author {
+        display: none; /* Hide author on very small screens */
+    }
+
+    .shelf-section-3d {
+        margin-bottom: 2rem;
+    }
+
+    .shelf-section-3d .shelf-label {
+        font-size: 1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    /* Adjust shelf lip size for smaller screens */
+    .bookshelf-3d::after {
+        height: 15px;
     }
 }
 

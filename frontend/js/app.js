@@ -2219,6 +2219,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function handleAuth(event) {
     event.preventDefault();
     const form = event.target;
+    const btn = form.querySelector('button[type="submit"]') || document.getElementById('submitBtn');
+    const originalText = btn ? btn.innerHTML : (form.dataset.mode === 'register' ? 'Sign Up' : 'Sign In');
+
+    // 1. Immediate UI Feedback: Disable button and show loading state
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...';
+    }
+
     // Determine mode from dataset (set by our toggle logic) or default to login
     const mode = form.dataset.mode || 'login';
 
@@ -2226,11 +2235,20 @@ async function handleAuth(event) {
     const password = form.querySelector('input[type="password"]').value;
     const usernameInput = document.getElementById("username");
 
+    // Helper to reset button state on failure
+    const resetBtn = () => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    };
+
     // Validate Email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         if (typeof showToast === 'function') showToast("Enter a valid email address", "error");
         else alert("Enter a valid email address");
+        resetBtn();
         return;
     }
 
@@ -2244,6 +2262,7 @@ async function handleAuth(event) {
         if (typeof showToast === 'function')
             showToast(`Welcome, Demo User!`, "success");
 
+        // Keep button disabled during redirect delay
         setTimeout(() => {
             window.location.href = "library.html";
         }, 1000);
@@ -2264,11 +2283,6 @@ async function handleAuth(event) {
     }
 
     try {
-        const btn = form.querySelector('button');
-        const originalText = btn.textContent;
-        btn.textContent = 'Processing...';
-        btn.disabled = true;
-
         const res = await fetch(`${MOOD_API_BASE}${endpoint.replace('/api/v1', '')}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2277,9 +2291,6 @@ async function handleAuth(event) {
         });
 
         const data = await res.json();
-
-        btn.textContent = originalText;
-        btn.disabled = false;
 
         if (res.ok) {
             // Success!
@@ -2291,26 +2302,26 @@ async function handleAuth(event) {
                 showToast(`${mode === 'login' ? 'Welcome back' : 'Welcome'}, ${data.user.username}!`, "success");
 
             // SYNC LOGIC
-            // If we have a library manager exposed, use it to sync anonymous data
             if (window.libManager) {
                 if (typeof showToast === 'function') showToast("Syncing your library...", "info");
                 await window.libManager.syncLocalToBackend(data.user);
             }
 
-            // Redirect
+            // Redirect - Button remains disabled
             setTimeout(() => {
                 window.location.href = "library.html";
             }, 1000);
         } else {
+            // Authentication failed - re-enable button
             if (typeof showToast === 'function') showToast(data.error || "Authentication failed", "error");
             else alert(data.error || "Authentication failed");
+            resetBtn();
         }
     } catch (e) {
         console.error("Auth Error", e);
         if (typeof showToast === 'function') showToast("Server connection failed", "error");
         else alert("Server connection failed");
-        const btn = form.querySelector('button');
-        if (btn) btn.disabled = false;
+        resetBtn();
     }
 }
 
