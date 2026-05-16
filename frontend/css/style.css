@@ -1779,7 +1779,7 @@ main {
 /* ===== GENRE SECTION STYLES ===== */
 .genre-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1.5rem;
     padding: 2rem 1rem;
     width: 100%;
@@ -1808,7 +1808,7 @@ main {
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0, 0.1);
-    gap: 1.25rem;
+    gap: 1.5rem;
 }
 
 /* Remove gold lines for cleaner small look */
@@ -4687,5 +4687,6 @@ body.night-mode .tooltip-author {
   padding-top: 1rem;
   border-top: 1px solid #374151;
 }
+
 
 
