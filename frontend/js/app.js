@@ -115,7 +115,20 @@ async function loadConfig() {
         console.warn("Failed to load backend config", e);
     }
 }
+import { saveBookOffline, removeOfflineBook, db } from './db.js';
 
+// Example click handler for your custom "Save for Offline" icon
+async function handleDownloadToggle(bookCard, bookData) {
+    const isAlreadyDownloaded = await db.downloadedBooks.get(bookData.id);
+    
+    if (isAlreadyDownloaded) {
+        const success = await removeOfflineBook(bookData.id);
+        if (success) bookCard.classList.remove('is-downloaded');
+    } else {
+        const success = await saveBookOffline(bookData);
+        if (success) bookCard.classList.add('is-downloaded');
+    }
+}
 // Toast Notification Helper
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
@@ -2648,4 +2661,12 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => KeyboardShortcuts.init());
 } else {
     KeyboardShortcuts.init();
+}
+// Register Service Worker for offline asset caching
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('BiblioDrift Service Worker registered successfully!', reg))
+            .catch(err => console.error('Service Worker registration failed:', err));
+    });
 }
