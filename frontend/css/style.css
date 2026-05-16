@@ -1777,16 +1777,15 @@ main {
 }
 
 /* ===== GENRE SECTION STYLES ===== */
-auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden
+.genre-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 1rem;
-    padding: 1rem 0;
+    gap: 1.5rem;
+    padding: 2rem 1rem;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
 }
 
 /* Genre Card - Vintage Book Spine Look */
@@ -1797,7 +1796,7 @@ auto-fit, minmax(200px, 1fr));
     /* Horizontal layout */
     align-items: center;
     justify-content: flex-start;
-    padding: 1rem 1.5rem;
+    padding: 1.25rem 1.75rem;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 
@@ -1805,12 +1804,11 @@ auto-fit, minmax(200px, 1fr));
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 
-    height: 80px;
-    /* Much smaller height */
+    height: 100px;
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0, 0.1);
-    gap: 1rem;
+    gap: 1.25rem;
 }
 
 /* Remove gold lines for cleaner small look */
@@ -4689,4 +4687,5 @@ body.night-mode .tooltip-author {
   padding-top: 1rem;
   border-top: 1px solid #374151;
 }
+
 
