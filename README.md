@@ -161,6 +161,19 @@ Built with ☕ and code by **Devanshi Malhotra** and contributors.
 
 ---
 
+## 🤖 Chatbot Recommendation Improvements
+
+This project includes an enhanced AI recommendation system that:
+
+- **Emotional Intelligence**: Better mood and emotional understanding in book recommendations
+- **Improved Prompting**: Enhanced prompt engineering for more personalized suggestions
+- **Reduced Repetition**: Minimizes generic, repetitive book suggestions
+- **Mixed Moods Support**: Intelligently interprets complex emotional states (e.g., "sad but hopeful", "dark academia mystery")
+- **Abstract Vibes**: Understands atmospheric and abstract preferences (e.g., "rainy day mystery", "cozy autumn reads")
+- **Conversational Style**: AI (Elara, the Bookseller) provides warm, thoughtful, immersive recommendations
+
+---
+
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
