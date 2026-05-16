@@ -509,6 +509,8 @@ class BookRenderer {
         const vibe = this.generateVibe(originalDescription, categories);
         const spineColors = ['#5D4037', '#4E342E', '#3E2723', '#2C2420', '#8D6E63'];
         const randomSpine = spineColors[Math.floor(Math.random() * spineColors.length)];
+        const cleanId = title.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+        const spineImagePath = `assets/images/${cleanId}_spine.jpg`;
 
         const scene = document.createElement('div');
         scene.className = 'book-scene';
