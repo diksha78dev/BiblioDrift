@@ -59,3 +59,8 @@ def create_spine(title, author, output_name):
 
 if __name__ == "__main__":
     create_spine("The God of Small Things", "Arundhati Roy", "small_things")
+    create_spine("Dune", "Frank Herbert", "dune")
+    create_spine("1984", "George Orwell", "1984")
+    create_spine("The Hobbit", "J.R.R. Tolkien", "the_hobbit")
+    create_spine("Pride and Prejudice", "Jane Austen", "pride_and_prejudice")
+    create_spine("The Great Gatsby", "F. Scott Fitzgerald", "the_great_gatsby")
