@@ -1253,6 +1253,22 @@ def logout():
     return resp, status
 
 
+@app.route('/api/v1/auth/verify', methods=['GET'])
+@jwt_required()
+def verify_auth_session():
+    """Validate JWT from access cookie and return the current user (session restore)."""
+    try:
+        uid = get_jwt_identity()
+        user = User.query.get(int(uid))
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify({
+            "user": {"id": user.id, "username": user.username, "email": user.email}
+        }), 200
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid session"}), 401
+
+
 # ==================== READING STATS ENDPOINTS ====================
 @app.route('/api/v1/stats/goal', methods=['POST'])
 @jwt_required()
