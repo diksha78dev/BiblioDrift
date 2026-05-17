@@ -39,6 +39,7 @@ class CacheNamespace(Enum):
     SYSTEM = "system"
     EXTERNAL_API = "external_api"
     PRICE_TRACKER = "price_tracker"
+    CATEGORY_BOOKS = "category_books"
 
 
 class CacheConfig:
@@ -65,6 +66,7 @@ class CacheConfig:
     MOOD_TAGS_TTL = int(os.getenv('CACHE_MOOD_TAGS_TTL', 43200))
     CHAT_RESPONSE_TTL = int(os.getenv('CACHE_CHAT_RESPONSE_TTL', 1800))
     GOODREADS_SCRAPING_TTL = int(os.getenv('CACHE_GOODREADS_TTL', 604800))
+    CATEGORY_BOOKS_TTL    = int(os.getenv('CACHE_CATEGORY_BOOKS_TTL', 43200))
     
     # Cache configuration
     CACHE_TYPE = os.getenv('CACHE_TYPE', 'simple')  # 'redis', 'simple', or 'null'
@@ -467,7 +469,7 @@ def cached_result(
             # Execute and store
             try:
                 result = func(*args, **kwargs)
-                if result is not None:
+                if result:
                     cache_service.set(cache_key, result, timeout=ttl)
                 return result
             except Exception as e:
@@ -526,3 +528,18 @@ def invalidate_namespace(namespace: Union[CacheNamespace, str], identifier: Opti
     Public API to invalidate a whole namespace or specific entity.
     """
     return cache_service.clear_namespace(namespace, identifier)
+
+def cache_category_books(func):
+    """
+    Cache AI-generated book lists for virtual shelf categories.
+
+    The key encodes *all* call arguments (category name, vibe_description,
+    and count) via the hash component built by CacheKey.build(), so a
+    request for 5 books and one for 10 books for the same category are
+    stored under different keys and never collide.
+    """
+    return cached_result(
+        CacheNamespace.CATEGORY_BOOKS,
+        identifier_arg='category',   # category name is the primary key segment
+        ttl=CacheConfig.CATEGORY_BOOKS_TTL
+    )(func)
