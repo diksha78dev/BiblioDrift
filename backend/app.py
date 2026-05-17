@@ -26,14 +26,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sanitizer import sanitize_payload
 from reader_identity.routes import reader_identity_bp
 
-# Load environment variables from config directory based on APP_ENV
-env = os.getenv('APP_ENV', 'development')
-env_path = os.path.join(os.path.dirname(__file__), '..', 'config', f'.env.{env}')
-if os.path.exists(env_path):
-    load_dotenv(env_path)
-else:
-    load_dotenv()
-
+# Environment variables are now loaded centrally in backend/config.py
 from config import app_config, setup_logging, validate_required_env_vars
 from ai_service import generate_book_note, get_ai_recommendations, get_category_books, get_book_mood_tags_safe, generate_chat_response, llm_service
 from models import db, User, Book, ShelfItem, BookNote, ReadingGoal, ReadingStats, Collection, CollectionItem, PriceHistory, PriceAlert, Review, register_user, login_user
