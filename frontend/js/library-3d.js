@@ -306,8 +306,6 @@ class BookshelfRenderer3D {
         this.cleanupCallbacks = [];
         this.isDestroyed = false;
         this._modalBackdropHandler = null;
-        this._escHandler = null;
-        this._escListenerAttached = false;
 
         // Create live region for screen reader announcements
         this.liveRegion = document.createElement('div');
@@ -443,6 +441,13 @@ class BookshelfRenderer3D {
         });
         this.addManagedListener(window, 'bibliodrift:library-manager-synced', () => {
             this.refreshShelves();
+        });
+
+        // Attach global ESC listener for modal exactly once
+        this.addManagedListener(document, 'keydown', (e) => {
+            if (e.key === 'Escape' && this.modal && this.modal.classList.contains('active')) {
+                this.closeModal();
+            }
         });
 
         // Setup modal close handlers
@@ -1440,7 +1445,6 @@ spine.addEventListener('blur', () => this.hideTooltip());
         if (this.modal) {
             this.modal.classList.remove('active');
             document.body.style.overflow = '';
-            this.removeEscListener();
 
             // Reset flip after transition
             setTimeout(() => {
@@ -1452,14 +1456,6 @@ spine.addEventListener('blur', () => this.hideTooltip());
                 fixedControls.forEach(el => el.style.opacity = '1');
                 fixedControls.forEach(el => el.style.pointerEvents = 'auto');
             }, 500);
-        }
-    }
-
-    removeEscListener() {
-        if (this._escHandler && this._escListenerAttached) {
-            document.removeEventListener('keydown', this._escHandler);
-            this._escListenerAttached = false;
-            this._escHandler = null;
         }
     }
 
@@ -1511,17 +1507,6 @@ spine.addEventListener('blur', () => this.hideTooltip());
                 }
             };
             this.addManagedListener(this.modal, 'click', this._modalBackdropHandler);
-        }
-
-        // ESC key to close - attach only once, remove on close
-        if (!this._escListenerAttached) {
-            this._escHandler = (e) => {
-                if (e.key === 'Escape' && this.modal && this.modal.classList.contains('active')) {
-                    this.closeModal();
-                }
-            };
-            document.addEventListener('keydown', this._escHandler);
-            this._escListenerAttached = true;
         }
 
         // Add to library button logic
