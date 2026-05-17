@@ -148,6 +148,20 @@ class Config:
             'JWT_COOKIE_SAMESITE': 'Lax',
             'SQLALCHEMY_DATABASE_URI': self.database.url,
             'SQLALCHEMY_TRACK_MODIFICATIONS': self.database.track_modifications,
+            
+            # =========================================================================
+            # SECURITY: CSRF CONFIGURATION (FLASK-WTF)
+            # =========================================================================
+            # We enable and configure CSRF protection at the application level.
+            # Using 'X-CSRF-Token' as the header name is a common standard for 
+            # single-page applications and AJAX-heavy frontends.
+            # =========================================================================
+            'WTF_CSRF_ENABLED': True,
+            'WTF_CSRF_SECRET_KEY': self.jwt.secret_key, # Reuse for simplicity, but ideally separate
+            'WTF_CSRF_HEADERS': ['X-CSRF-Token'],
+            'WTF_CSRF_SSL_STRICT': self.is_production(),
+            'WTF_CSRF_TIME_LIMIT': 3600, # 1 hour token validity
+            'WTF_CSRF_METHODS': ['POST', 'PUT', 'PATCH', 'DELETE'],
         }
     
     def validate(self) -> tuple[bool, list[str]]:
